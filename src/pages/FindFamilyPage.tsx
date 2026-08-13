@@ -5,6 +5,7 @@ import { readAccountMode } from '../lib/accountMode';
 import {
   loadFamilyRequests,
   respondToFamilyRequest,
+  searchFamilyProfiles,
   sendFamilyRequest,
 } from '../lib/familyConnections';
 import type { FamilyProfile, FamilyRequest } from '../lib/familyConnections';
@@ -22,8 +23,14 @@ export function FindFamilyPage() {
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
-    setResults([]);
-    setMessage('Family search will turn on after the Supabase family tables are created.');
+    setMessage('');
+
+    try {
+      setResults(await searchFamilyProfiles(query));
+    } catch (error) {
+      setResults([]);
+      setMessage(error instanceof Error ? error.message : 'Could not search family.');
+    }
   }
 
   async function requestFamily(profileId: string) {
@@ -74,7 +81,7 @@ export function FindFamilyPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder={mode === 'kid' ? "Grandma's email" : "Kid or parent's email"}
             />
-            <button type="submit">Check</button>
+            <button type="submit">Find</button>
           </form>
           {message && <p className="message">{message}</p>}
 
