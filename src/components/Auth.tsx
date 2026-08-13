@@ -73,15 +73,13 @@ export function Auth() {
       <h2>{mode === 'signin' ? 'Log in' : 'Create account'}</h2>
       <p className="auth-help">
         {mode === 'signin'
-          ? 'Use the account you already created.'
-          : 'Choose your role once. You can edit your name and avatar later.'}
+          ? 'Choose who you are, then use the account you already created.'
+          : 'Choose who you are. You can edit your name and avatar later.'}
       </p>
-      {mode === 'signup' && (
-        <>
-          <p className="auth-role-label">Choose your role</p>
-          <AccountSwitch mode={accountMode} onChange={changeAccountMode} />
-        </>
-      )}
+      <div className="auth-role-choice">
+        <p className="auth-role-label">I am a...</p>
+        <AccountSwitch mode={accountMode} onChange={changeAccountMode} />
+      </div>
 
       <button className="google-button" type="button" onClick={signInWithGoogle} disabled={busy}>
         {mode === 'signup' ? 'Create with Google' : 'Continue with Google'}

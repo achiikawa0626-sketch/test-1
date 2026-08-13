@@ -80,6 +80,10 @@ export function ChatPage() {
     mediaUrl: item.mediaUrl,
     createdAt: item.createdAt,
   }));
+  const storyText = chatMessages
+    .map((item) => `${item.senderRole}: ${item.body}`)
+    .filter((line) => line.trim().length > 0)
+    .join('\n');
 
   return (
     <main className="chat-page">
@@ -129,7 +133,12 @@ export function ChatPage() {
         {activeContact ? (
           <>
             <ChatMessages messages={chatMessages} />
-            <ChatComposer mode={mode} onSendText={sendText} onSendMedia={sendMedia} />
+            <ChatComposer
+              mode={mode}
+              storyText={storyText}
+              onSendText={sendText}
+              onSendMedia={sendMedia}
+            />
           </>
         ) : (
           <div className="chat-empty">

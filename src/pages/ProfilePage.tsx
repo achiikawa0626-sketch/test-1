@@ -88,7 +88,7 @@ export function ProfilePage() {
 
         <div className="profile-locked-field">
           <span>Role</span>
-          <strong>{role === 'kid' ? 'Kid or parent' : 'Grandma or grandpa'}</strong>
+          <strong>{role === 'kid' ? 'Child or parent' : 'Grandma or granddad'}</strong>
         </div>
 
         <label>

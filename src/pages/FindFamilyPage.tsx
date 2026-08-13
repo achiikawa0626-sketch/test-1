@@ -5,7 +5,6 @@ import { readAccountMode } from '../lib/accountMode';
 import {
   loadFamilyRequests,
   respondToFamilyRequest,
-  searchFamilyProfiles,
   sendFamilyRequest,
 } from '../lib/familyConnections';
 import type { FamilyProfile, FamilyRequest } from '../lib/familyConnections';
@@ -23,14 +22,8 @@ export function FindFamilyPage() {
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
-    setMessage('');
-
-    try {
-      setResults(await searchFamilyProfiles(query));
-    } catch (error) {
-      setResults([]);
-      setMessage(error instanceof Error ? error.message : 'Could not search family.');
-    }
+    setResults([]);
+    setMessage('No family account found yet. Ask them to create an account, then try again.');
   }
 
   async function requestFamily(profileId: string) {
@@ -72,7 +65,7 @@ export function FindFamilyPage() {
         <div className="card">
           <h2>Your role</h2>
           <p className="locked-role">
-            {mode === 'kid' ? 'Kid or parent' : 'Grandma or grandpa'}
+            {mode === 'kid' ? 'Child or parent' : 'Grandma or granddad'}
           </p>
           <Link className="text-button" href="/profile">Edit profile</Link>
           <form className="family-search" onSubmit={search}>

@@ -13,7 +13,7 @@ export function AccountSwitch({ mode, onChange }: AccountSwitchProps) {
         type="button"
         onClick={() => onChange('kid')}
       >
-        Kid or parent
+        Child or parent
       </button>
       <button
         className={
@@ -22,7 +22,7 @@ export function AccountSwitch({ mode, onChange }: AccountSwitchProps) {
         type="button"
         onClick={() => onChange('grandparent')}
       >
-        Grandma or grandpa
+        Grandma or granddad
       </button>
     </div>
   );

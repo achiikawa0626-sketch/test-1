@@ -55,6 +55,11 @@ body { background: var(--bg); }
   font-weight: 800;
 }
 
+.auth-role-choice {
+  display: grid;
+  gap: 8px;
+}
+
 .auth-help {
   color: var(--soft);
   font-size: 14px;
@@ -1041,6 +1046,23 @@ button.small { padding: 6px 10px; font-size: 14px; }
   background: #fff;
 }
 
+.question-suggestions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.question-suggestions__header strong {
+  font-size: 14px;
+}
+
+.question-suggestions__message {
+  color: var(--clay);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .question-suggestions__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1057,6 +1079,11 @@ button.small { padding: 6px 10px; font-size: 14px; }
   font-size: 13px;
   font-weight: 800;
   text-align: left;
+}
+
+.question-suggestion.ai {
+  background: #eef6f4;
+  color: #315d67;
 }
 
 .question-suggestions textarea {

@@ -8,18 +8,52 @@ const suggestedQuestions = [
 ];
 
 type QuestionSuggestionsProps = {
+  aiMessage: string;
+  aiQuestions: string[];
   customQuestion: string;
+  isGeneratingQuestions: boolean;
+  onGenerateQuestions: () => void;
   onCustomQuestionChange: (question: string) => void;
   onPickQuestion: (question: string) => void;
 };
 
 export function QuestionSuggestions({
+  aiMessage,
+  aiQuestions,
   customQuestion,
+  isGeneratingQuestions,
+  onGenerateQuestions,
   onCustomQuestionChange,
   onPickQuestion,
 }: QuestionSuggestionsProps) {
   return (
     <div className="question-suggestions">
+      <div className="question-suggestions__header">
+        <strong>Question ideas</strong>
+        <button
+          className="chat-icon-button"
+          type="button"
+          onClick={onGenerateQuestions}
+          disabled={isGeneratingQuestions}
+        >
+          {isGeneratingQuestions ? 'Thinking...' : 'AI follow-ups'}
+        </button>
+      </div>
+      {aiMessage && <p className="question-suggestions__message">{aiMessage}</p>}
+      {aiQuestions.length > 0 && (
+        <div className="question-suggestions__grid">
+          {aiQuestions.map((question) => (
+            <button
+              className="question-suggestion ai"
+              type="button"
+              key={question}
+              onClick={() => onPickQuestion(question)}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="question-suggestions__grid">
         {suggestedQuestions.map((question) => (
           <button
