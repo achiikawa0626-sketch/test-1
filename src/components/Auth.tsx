@@ -1,69 +1,122 @@
 import { useState } from 'react';
+import { AccountSwitch } from './AccountSwitch';
+import { readAccountMode, saveAccountMode } from '../lib/accountMode';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
-// Вход и регистрация по email + паролю. Это пример — Codex поможет улучшить (Google-вход и т.д.).
 export function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [accountMode, setAccountMode] = useState(readAccountMode);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (!isSupabaseConfigured) return <SupabaseSetupMessage />;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function changeAccountMode(nextMode: typeof accountMode) {
+    setAccountMode(nextMode);
+    saveAccountMode(nextMode);
+  }
+
+  async function signInWithGoogle() {
     setBusy(true);
     setMessage('');
+
     try {
-      const fn =
+      if (mode === 'signup') saveAccountMode(accountMode);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/profile`,
+        },
+      });
+
+      if (error) setMessage(error.message);
+    } catch {
+      setMessage('Could not open Google sign in. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage('');
+
+    try {
+      if (mode === 'signup') saveAccountMode(accountMode);
+      const request =
         mode === 'signup'
           ? supabase.auth.signUp({
               email,
               password,
-              options: { emailRedirectTo: window.location.origin },
+              options: { emailRedirectTo: `${window.location.origin}/profile` },
             })
           : supabase.auth.signInWithPassword({ email, password });
-      const { error } = await fn;
+
+      const { error } = await request;
       if (error) setMessage(error.message);
-      else if (mode === 'signup') setMessage('Готово! Проверь почту, если нужна подтверждалка.');
+      else if (mode === 'signup') setMessage('Done. Check your email if confirmation is needed.');
+      else window.location.assign('/profile');
     } catch {
-      setMessage('Что-то пошло не так. Попробуй ещё раз.');
+      setMessage('Something went wrong. Try again.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="card">
-      <h2>{mode === 'signin' ? 'Вход' : 'Регистрация'}</h2>
+    <section className="card auth-card">
+      <h2>{mode === 'signin' ? 'Log in' : 'Create account'}</h2>
+      <p className="auth-help">
+        {mode === 'signin'
+          ? 'Use the account you already created.'
+          : 'Choose your role once. You can edit your name and avatar later.'}
+      </p>
+      {mode === 'signup' && (
+        <>
+          <p className="auth-role-label">Choose your role</p>
+          <AccountSwitch mode={accountMode} onChange={changeAccountMode} />
+        </>
+      )}
+
+      <button className="google-button" type="button" onClick={signInWithGoogle} disabled={busy}>
+        {mode === 'signup' ? 'Create with Google' : 'Continue with Google'}
+      </button>
+
+      <div className="auth-divider">or use email</div>
+
       <form onSubmit={handleSubmit} className="form">
         <input
           type="email"
           placeholder="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
         <input
           type="password"
-          placeholder="пароль (6+ символов)"
+          placeholder="password (6+ characters)"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
           minLength={6}
           required
         />
         <button type="submit" disabled={busy}>
-          {busy ? '…' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
+          {busy ? 'Loading...' : mode === 'signin' ? 'Log in' : 'Create account'}
         </button>
       </form>
+
       {message && <p className="message">{message}</p>}
+
       <button
         className="ghost"
+        type="button"
         onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
       >
-        {mode === 'signin' ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войти'}
+        {mode === 'signin' ? 'No account yet? Create one' : 'Already have an account? Log in'}
       </button>
     </section>
   );
