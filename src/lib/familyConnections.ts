@@ -6,6 +6,7 @@ export type FamilyProfile = {
   id: string;
   email: string;
   displayName: string;
+  username?: string;
   accountMode: AccountMode;
 };
 
@@ -20,6 +21,7 @@ type ProfileRow = {
   id: string;
   email: string;
   display_name: string;
+  username: string | null;
   account_mode: AccountMode;
 };
 
@@ -76,7 +78,13 @@ export async function searchFamilyProfiles(searchText: string) {
   });
 
   if (error) throw friendlyFamilyError(error.message);
-  return ((data ?? []) as ProfileRow[]).map(toProfile);
+  return ((data ?? []) as ProfileRow[]).map(toProfile).filter(isOppositeRole);
+}
+
+export async function loadRecentFamilyProfiles() {
+  const { data, error } = await supabase.rpc('recent_profiles');
+  if (error) throw friendlyFamilyError(error.message);
+  return ((data ?? []) as ProfileRow[]).map(toProfile).filter(isOppositeRole);
 }
 
 export async function sendFamilyRequest(receiverId: string) {
@@ -86,7 +94,12 @@ export async function sendFamilyRequest(receiverId: string) {
     receiver_id: receiverId,
   });
 
-  if (error) throw friendlyFamilyError(error.message);
+  if (error) {
+    if (error.message.toLowerCase().includes('duplicate')) {
+      throw new Error('You already sent this family request.');
+    }
+    throw friendlyFamilyError(error.message);
+  }
 }
 
 export async function respondToFamilyRequest(requestId: string, status: 'accepted' | 'declined') {
@@ -103,7 +116,7 @@ export async function loadFamilyRequests() {
   const { data, error } = await supabase
     .from('family_requests')
     .select(
-      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, account_mode)',
+      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
     )
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
     .order('created_at', { ascending: false });
@@ -135,8 +148,13 @@ function toProfile(row: ProfileRow): FamilyProfile {
     id: row.id,
     email: row.email,
     displayName: row.display_name,
+    username: row.username ?? undefined,
     accountMode: row.account_mode,
   };
+}
+
+function isOppositeRole(profile: FamilyProfile) {
+  return profile.accountMode !== readAccountMode();
 }
 
 function friendlyFamilyError(message: string) {
@@ -145,7 +163,8 @@ function friendlyFamilyError(message: string) {
     lowerMessage.includes('could not find the table') ||
     lowerMessage.includes('profiles') ||
     lowerMessage.includes('family_requests') ||
-    lowerMessage.includes('search_profiles');
+    lowerMessage.includes('search_profiles') ||
+    lowerMessage.includes('recent_profiles');
 
   if (isMissingProfiles) {
     return new Error('Supabase family tables are missing. Run npm run db:push -- --yes first.');

@@ -25,7 +25,9 @@ begin
   end if;
 end $$;
 
-create or replace function public.search_profiles(search_text text)
+drop function if exists public.search_profiles(text);
+
+create function public.search_profiles(search_text text)
 returns table (
   id uuid,
   email text,
