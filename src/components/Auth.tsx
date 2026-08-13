@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AccountSwitch } from './AccountSwitch';
 import { readAccountMode, saveAccountMode } from '../lib/accountMode';
+import { appUrl, redirectTo } from '../lib/routes';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
@@ -28,7 +29,7 @@ export function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/profile`,
+          redirectTo: appUrl('/profile'),
         },
       });
 
@@ -52,14 +53,14 @@ export function Auth() {
           ? supabase.auth.signUp({
               email,
               password,
-              options: { emailRedirectTo: `${window.location.origin}/profile` },
+              options: { emailRedirectTo: appUrl('/profile') },
             })
           : supabase.auth.signInWithPassword({ email, password });
 
       const { error } = await request;
       if (error) setMessage(error.message);
       else if (mode === 'signup') setMessage('Done. Check your email if confirmation is needed.');
-      else window.location.assign('/profile');
+      else redirectTo('/profile');
     } catch {
       setMessage('Something went wrong. Try again.');
     } finally {

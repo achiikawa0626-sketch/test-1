@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AskGrandma</title>
+    <script>
+      (function () {
+        var repo = '/test-1';
+        var location = window.location;
+
+        if (location.pathname.indexOf(repo) !== 0) {
+          location.replace(location.origin + repo + '/');
+          return;
+        }
+
+        var route = location.pathname.slice(repo.length).replace(/^\//, '');
+        var query = location.search ? '&' + location.search.slice(1) : '';
+        location.replace(location.origin + repo + '/?/' + route + query + location.hash);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

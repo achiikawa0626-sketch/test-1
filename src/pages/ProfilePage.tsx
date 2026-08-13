@@ -6,6 +6,7 @@ import {
   uploadProfileAvatar,
   validateUsername,
 } from '../lib/profile';
+import { redirectTo } from '../lib/routes';
 
 export function ProfilePage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +40,7 @@ export function ProfilePage() {
     try {
       await saveUserProfile({ nickname, username });
       setMessage('Profile saved.');
-      window.setTimeout(() => window.location.assign('/find-family'), 400);
+      window.setTimeout(() => redirectTo('/find-family'), 400);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save profile.');
     } finally {
