@@ -53,8 +53,8 @@ function ChatReady(props: ChatShellProps & { storyText: string }) {
         </>
       ) : (
         <ChatEmpty
-          text="No family connected yet."
-          help="Send or accept a family request, then this becomes your real chat."
+          text="No accepted family chat yet."
+          help="Open family requests and tap Chat next to a connected person."
         />
       )}
     </>

@@ -48,7 +48,7 @@ export function ChatPage() {
     loadChatContacts()
       .then((nextContacts) => {
         setContacts(nextContacts);
-        setActiveContact((contact) => contact ?? nextContacts[0]);
+        setActiveContact((contact) => contact ?? pickContact(nextContacts));
       })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : 'Could not load chat contacts.');
@@ -140,4 +140,9 @@ export function ChatPage() {
       />
     </main>
   );
+}
+
+function pickContact(contacts: FamilyProfile[]) {
+  const contactId = new URLSearchParams(window.location.search).get('contact');
+  return contacts.find((contact) => contact.id === contactId) ?? contacts[0];
 }

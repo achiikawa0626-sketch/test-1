@@ -17,12 +17,13 @@ export function ConnectedFamilyPanel({ requests }: ConnectedFamilyPanelProps) {
           {requests.map((request) => (
             <article className="profile-row" key={request.id}>
               <FamilyProfileSummary profile={request.profile} />
-              <span className="request-chip request-chip--connected">Connected</span>
+              <Link className="text-button" href={`/chat?contact=${request.profile.id}`}>
+                Chat
+              </Link>
             </article>
           ))}
           <div className="family-next-actions">
             <Link className="text-button" href="/questions">Ask questions</Link>
-            <Link className="text-button" href="/chat">Open chat</Link>
           </div>
         </>
       )}
