@@ -921,6 +921,18 @@ button.small { padding: 6px 10px; font-size: 14px; }
   color: #fff;
 }
 
+.chat-active-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #315d67;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .chat-messages {
   display: grid;
   align-content: start;

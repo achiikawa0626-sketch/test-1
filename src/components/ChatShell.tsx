@@ -16,6 +16,7 @@ type ChatShellProps = {
   isAuthReady: boolean;
   isLoggedIn: boolean;
   onContactChange: (contact: FamilyProfile) => void;
+  onRefresh: () => void;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
@@ -44,6 +45,12 @@ function ChatReady(props: ChatShellProps & { storyText: string }) {
       {props.message && <p className="message">{props.message}</p>}
       {props.activeContact ? (
         <>
+          <div className="chat-active-bar">
+            <span>Chatting with {props.activeContact.displayName}</span>
+            <button className="ghost small" type="button" onClick={props.onRefresh}>
+              Refresh
+            </button>
+          </div>
           <ChatMessages messages={props.messages} />
           <ChatComposer
             mode={props.mode}

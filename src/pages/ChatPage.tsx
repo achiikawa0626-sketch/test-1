@@ -132,6 +132,7 @@ export function ChatPage() {
         isAuthReady={isAuthReady}
         isLoggedIn={isLoggedIn}
         onContactChange={setActiveContact}
+        onRefresh={() => void refreshMessages(activeContact)}
         onSendText={sendText}
         onSendMedia={sendMedia}
       />

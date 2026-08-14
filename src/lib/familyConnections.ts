@@ -1,24 +1,11 @@
 import type { AccountMode } from './accountMode';
 import { readAccountMode } from './accountMode';
 import { friendlyFamilyError } from './familyErrors';
+import type { FamilyProfile, FamilyRequest } from './familyTypes';
 import { createAvatarUrl } from './profileAvatars';
 import { supabase } from './supabase';
 
-export type FamilyProfile = {
-  id: string;
-  email: string;
-  displayName: string;
-  username?: string;
-  accountMode: AccountMode;
-  avatarUrl?: string;
-};
-
-export type FamilyRequest = {
-  id: string;
-  status: 'pending' | 'accepted' | 'declined';
-  direction: 'incoming' | 'outgoing';
-  profile: FamilyProfile;
-};
+export type { FamilyProfile, FamilyRequest } from './familyTypes';
 
 type ProfileRow = {
   id: string;
@@ -37,6 +24,12 @@ type RequestRow = {
   requester: ProfileRow | ProfileRow[] | null;
   receiver: ProfileRow | ProfileRow[] | null;
 };
+
+const requestSelects = [
+  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
+  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
+  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, account_mode)',
+];
 
 export async function ensureProfile() {
   const { data, error } = await supabase.auth.getUser();
@@ -104,18 +97,10 @@ export async function cancelFamilyRequest(requestId: string) {
   const { error } = await supabase.from('family_requests').delete().eq('id', requestId);
   if (error) throw friendlyFamilyError(error.message);
 }
-
 export async function loadFamilyRequests() {
   const userId = await ensureProfile();
-  const { data, error } = await supabase
-    .from('family_requests')
-    .select(
-      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
-    )
-    .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
-    .order('created_at', { ascending: false });
-  if (error) throw friendlyFamilyError(error.message);
-  return Promise.all(((data ?? []) as RequestRow[]).map(async (request) => {
+  const rows = await loadFamilyRequestRows(userId);
+  return Promise.all(rows.map(async (request) => {
     const direction: FamilyRequest['direction'] =
       request.requester_id === userId ? 'outgoing' : 'incoming';
     const profile = direction === 'outgoing' ? request.receiver : request.requester;
@@ -126,6 +111,25 @@ export async function loadFamilyRequests() {
       profile: await toProfile(readProfile(profile)),
     };
   }));
+}
+
+async function loadFamilyRequestRows(userId: string) {
+  for (const select of requestSelects) {
+    const { data, error } = await supabase
+      .from('family_requests')
+      .select(select)
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    if (!error) return (data ?? []) as unknown as RequestRow[];
+    if (!isColumnError(error.message)) throw friendlyFamilyError(error.message);
+  }
+
+  throw new Error('Could not load family requests.');
+}
+
+function isColumnError(message: string) {
+  const lowerMessage = message.toLowerCase();
+  return lowerMessage.includes('column') || lowerMessage.includes('schema cache');
 }
 
 function readProfile(profile: ProfileRow | ProfileRow[] | null) {
