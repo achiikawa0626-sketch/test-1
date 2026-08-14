@@ -73,6 +73,11 @@ export async function sendDirectChat(input: {
   if (error) throw friendlyDirectChatError(error.message);
 }
 
+export async function deleteDirectChatMessage(messageId: string) {
+  const { error } = await supabase.from('direct_chat_messages').delete().eq('id', messageId);
+  if (error) throw friendlyDirectChatError(error.message);
+}
+
 async function uploadDirectMedia(input: {
   userId: string;
   contactId: string;

@@ -20,7 +20,7 @@ export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatC
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isQuestionPanelOpen, setIsQuestionPanelOpen] = useState(false);
   const canAskQuestions = mode === 'kid';
-  const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['video'] : ['audio', 'video'];
+  const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['video'] : ['audio'];
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();

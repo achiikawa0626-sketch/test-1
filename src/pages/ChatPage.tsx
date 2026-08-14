@@ -8,7 +8,12 @@ import { FamilyChatProfileEditor } from '../components/FamilyChatProfileEditor';
 import { readAccountMode } from '../lib/accountMode';
 import { loadFamilyChatProfile, saveFamilyChatProfile } from '../lib/familyChatProfile';
 import type { FamilyChatProfile } from '../lib/familyChatProfile';
-import { loadDirectChat, sendDirectChat } from '../lib/directChat';
+import {
+  deleteDirectChatMessage,
+  loadChatContacts,
+  loadDirectChat,
+  sendDirectChat,
+} from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
 import type { FamilyProfile } from '../lib/familyConnections';
@@ -16,10 +21,11 @@ import { supabase } from '../lib/supabase';
 
 export function ChatPage() {
   const [mode] = useState(readAccountMode);
-  const [contacts] = useState<FamilyProfile[]>([]);
+  const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [activeContact, setActiveContact] = useState<FamilyProfile>();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
+  const [translatedMessage, setTranslatedMessage] = useState<{ id: string; text: string }>();
   const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -45,6 +51,19 @@ export function ChatPage() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
+
+    loadChatContacts()
+      .then((nextContacts) => {
+        setContacts(nextContacts);
+        setActiveContact((currentContact) => currentContact ?? nextContacts[0]);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : 'Could not load family chats.');
+      });
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !activeContact) return;
 
     refreshMessages().catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : 'Could not load messages.');
@@ -72,9 +91,40 @@ export function ChatPage() {
     await refreshMessages(activeContact);
   }
 
+  async function copyMessage(text: string) {
+    await navigator.clipboard.writeText(text);
+    setMessage('Message copied.');
+  }
+
+  async function deleteMessage(messageId: string) {
+    await deleteDirectChatMessage(messageId);
+    setTranslatedMessage((current) => (current?.id === messageId ? undefined : current));
+    await refreshMessages(activeContact);
+  }
+
+  async function translateMessage(chatMessage: ChatMessage) {
+    if (!chatMessage.body.trim()) return;
+    setMessage('Translating...');
+    const { data, error } = await supabase.functions.invoke('ai', {
+      body: {
+        prompt: chatMessage.body,
+        system: 'Translate this family chat message into simple English. Return only the translation.',
+      },
+    });
+
+    if (error) {
+      setMessage('Could not translate this message.');
+      return;
+    }
+
+    setTranslatedMessage({ id: chatMessage.id, text: data.text ?? 'No translation found.' });
+    setMessage('');
+  }
+
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
     senderRole: item.isMine ? mode : item.senderRole,
+    isMine: item.isMine,
     body: item.body,
     mediaType: item.mediaType,
     mediaUrl: item.mediaUrl,
@@ -132,7 +182,13 @@ export function ChatPage() {
         {message && <p className="message">{message}</p>}
         {activeContact ? (
           <>
-            <ChatMessages messages={chatMessages} />
+            <ChatMessages
+              messages={chatMessages}
+              translatedMessage={translatedMessage}
+              onCopy={copyMessage}
+              onDelete={deleteMessage}
+              onTranslate={translateMessage}
+            />
             <ChatComposer
               mode={mode}
               storyText={storyText}

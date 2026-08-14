@@ -1358,6 +1358,32 @@ button.small { padding: 6px 10px; font-size: 14px; }
   white-space: pre-wrap;
 }
 
+.chat-bubble__translation {
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(49, 93, 103, 0.08);
+  color: #315d67;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.chat-bubble__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.chat-bubble__actions button {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 14px;
+  background: rgba(49, 93, 103, 0.08);
+  color: #315d67;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .chat-bubble time {
   justify-self: end;
   color: rgba(28, 37, 40, 0.55);
