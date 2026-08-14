@@ -45,8 +45,8 @@ export function FindFamilyPage() {
 
   async function requestFamily(profileId: string) {
     try {
-      await sendFamilyRequest(profileId);
-      setMessage('Family request sent.');
+      const result = await sendFamilyRequest(profileId);
+      setMessage(result === 'accepted' ? 'Family request accepted.' : 'Family request sent.');
       await refreshRequests();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send request.');
