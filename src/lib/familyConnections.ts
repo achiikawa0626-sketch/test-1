@@ -1,5 +1,6 @@
-import { readAccountMode } from './accountMode';
 import type { AccountMode } from './accountMode';
+import { readAccountMode } from './accountMode';
+import { friendlyFamilyError } from './familyErrors';
 import { supabase } from './supabase';
 
 export type FamilyProfile = {
@@ -72,13 +73,11 @@ export async function ensureProfile() {
 
 export async function searchFamilyProfiles(searchText: string) {
   if (searchText.trim().length < 2) return [];
-
   const { data, error } = await supabase.rpc('search_profiles', {
     search_text: searchText.trim(),
   });
-
   if (error) throw friendlyFamilyError(error.message);
-  return ((data ?? []) as ProfileRow[]).map(toProfile).filter(isOppositeRole);
+  return ((data ?? []) as ProfileRow[]).map(toProfile);
 }
 
 export async function sendFamilyRequest(receiverId: string) {
@@ -87,7 +86,6 @@ export async function sendFamilyRequest(receiverId: string) {
     requester_id: userId,
     receiver_id: receiverId,
   });
-
   if (error) {
     if (error.message.toLowerCase().includes('duplicate')) {
       throw new Error('You already sent this family request.');
@@ -116,13 +114,11 @@ export async function loadFamilyRequests() {
   const { data, error } = await supabase
     .from('family_requests')
     .select(
-      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, account_mode)',
+      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
     )
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
     .order('created_at', { ascending: false });
-
   if (error) throw friendlyFamilyError(error.message);
-
   return ((data ?? []) as RequestRow[]).map((request) => {
     const direction: FamilyRequest['direction'] =
       request.requester_id === userId ? 'outgoing' : 'incoming';
@@ -151,24 +147,4 @@ function toProfile(row: ProfileRow): FamilyProfile {
     username: row.username ?? undefined,
     accountMode: row.account_mode,
   };
-}
-
-function isOppositeRole(profile: FamilyProfile) {
-  return profile.accountMode !== readAccountMode();
-}
-
-function friendlyFamilyError(message: string) {
-  const lowerMessage = message.toLowerCase();
-  const isMissingProfiles =
-    lowerMessage.includes('could not find the table') ||
-    lowerMessage.includes('profiles') ||
-    lowerMessage.includes('family_requests') ||
-    lowerMessage.includes('search_profiles') ||
-    lowerMessage.includes('recent_profiles');
-
-  if (isMissingProfiles) {
-    return new Error('Supabase family tables are missing. Run npm run db:push -- --yes first.');
-  }
-
-  return new Error(message);
 }

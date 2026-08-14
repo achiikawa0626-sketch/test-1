@@ -1,7 +1,11 @@
 import { readAccountMode } from './accountMode';
+import { ensureProfile } from './familyConnections';
+import { readSavedProfile, writeSavedProfile } from './profileLocal';
+import type { SavedProfile } from './profileLocal';
 import { supabase } from './supabase';
 
 const BAD_WORDS = ['admin', 'support', 'moderator', 'fuck', 'shit', 'bitch', 'dick', 'asshole'];
+const AVATAR_BUCKET = 'profile-avatars';
 
 export type UserProfile = {
   email: string;
@@ -11,11 +15,12 @@ export type UserProfile = {
   avatarUrl?: string;
 };
 
-type SavedProfile = {
-  nickname: string;
-  username: string;
-  role: 'kid' | 'grandparent';
-  avatarUrl?: string;
+type ProfileRow = {
+  email: string;
+  display_name: string;
+  username: string | null;
+  account_mode: 'kid' | 'grandparent';
+  avatar_path: string | null;
 };
 
 export function validateUsername(username: string) {
@@ -33,45 +38,71 @@ export function validateUsername(username: string) {
 
 export async function loadUserProfile(): Promise<UserProfile> {
   const user = await readUser();
-  const saved = readSavedProfile(user.id);
-  const email = user.email ?? '';
-  const fallbackName = user.user_metadata.full_name ?? email.split('@')[0] ?? 'Family member';
+  await ensureProfile();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('email, display_name, username, account_mode, avatar_path')
+    .eq('id', user.id)
+    .single();
+
+  if (error) throw friendlyProfileError(error.message);
+
+  const localProfile = readSavedProfile(user.id);
+  const row = await syncLocalProfile(user.id, data as ProfileRow, localProfile);
+  const avatarUrl = row.avatar_path ? await createAvatarUrl(row.avatar_path) : localProfile.avatarUrl;
 
   return {
-    email,
-    nickname: saved.nickname || fallbackName,
-    username: saved.username,
-    role: saved.role,
-    avatarUrl: saved.avatarUrl,
+    email: row.email,
+    nickname: row.display_name,
+    username: row.username ?? '',
+    role: row.account_mode,
+    avatarUrl,
   };
 }
 
 export async function saveUserProfile(input: { nickname: string; username: string }) {
   const user = await readUser();
+  await ensureProfile();
+
   const username = input.username.trim().toLowerCase();
   const usernameError = validateUsername(username);
   if (usernameError) throw new Error(usernameError);
 
-  if (isTakenUsername(user.id, username)) {
-    throw new Error('This username is already taken on this device.');
-  }
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      display_name: input.nickname.trim() || username,
+      username,
+      account_mode: readAccountMode(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id);
 
-  const saved = readSavedProfile(user.id);
-  writeSavedProfile(user.id, {
-    ...saved,
-    nickname: input.nickname.trim() || username,
-    username,
-  });
+  if (error) throw friendlyProfileError(error.message);
+  writeSavedProfile(user.id, { nickname: input.nickname, username, role: readAccountMode() });
 }
 
 export async function uploadProfileAvatar(file: File) {
   if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
 
   const user = await readUser();
-  const avatarUrl = await readFileAsDataUrl(file);
-  const saved = readSavedProfile(user.id);
-  writeSavedProfile(user.id, { ...saved, avatarUrl });
-  return avatarUrl;
+  await ensureProfile();
+
+  const avatarPath = `${user.id}/avatar`;
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(avatarPath, file, { contentType: file.type, upsert: true });
+
+  if (uploadError) throw friendlyProfileError(uploadError.message);
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({ avatar_path: avatarPath, updated_at: new Date().toISOString() })
+    .eq('id', user.id);
+
+  if (profileError) throw friendlyProfileError(profileError.message);
+  return createAvatarUrl(avatarPath);
 }
 
 async function readUser() {
@@ -80,55 +111,38 @@ async function readUser() {
   return data.user;
 }
 
-function readSavedProfile(userId: string): SavedProfile {
-  const fallback: SavedProfile = {
-    nickname: '',
-    username: '',
-    role: readAccountMode(),
-  };
+async function syncLocalProfile(userId: string, row: ProfileRow, localProfile: SavedProfile) {
+  if (!localProfile.username || row.username) return row;
 
-  try {
-    const saved = localStorage.getItem(profileKey(userId));
-    return saved ? { ...fallback, ...(JSON.parse(saved) as Partial<SavedProfile>) } : fallback;
-  } catch {
-    return fallback;
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      display_name: localProfile.nickname || row.display_name,
+      username: localProfile.username,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error) return row;
+  return { ...row, display_name: localProfile.nickname || row.display_name, username: localProfile.username };
+}
+
+async function createAvatarUrl(path: string) {
+  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, 60 * 60);
+  if (error) return undefined;
+  return data.signedUrl;
+}
+
+function friendlyProfileError(message: string) {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes('duplicate') || lowerMessage.includes('profiles_username_unique')) {
+    return new Error('This username is already taken.');
   }
-}
 
-function writeSavedProfile(userId: string, profile: SavedProfile) {
-  localStorage.setItem(profileKey(userId), JSON.stringify(profile));
-  saveUsernameOwner(userId, profile.username);
-}
-
-function isTakenUsername(userId: string, username: string) {
-  const owners = readUsernameOwners();
-  const owner = owners[username];
-  return Boolean(owner && owner !== userId);
-}
-
-function saveUsernameOwner(userId: string, username: string) {
-  const owners = readUsernameOwners();
-  owners[username] = userId;
-  localStorage.setItem('askgrandma-usernames', JSON.stringify(owners));
-}
-
-function readUsernameOwners(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem('askgrandma-usernames') ?? '{}') as Record<string, string>;
-  } catch {
-    return {};
+  if (lowerMessage.includes('profile-avatars')) {
+    return new Error('Avatar storage is not ready. Run npm run db:push -- --yes first.');
   }
-}
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('Could not upload avatar.'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function profileKey(userId: string) {
-  return `askgrandma-profile-${userId}`;
+  return new Error(message);
 }
