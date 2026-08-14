@@ -1,3 +1,4 @@
+import { FamilyProfileSummary } from './FamilyProfileSummary';
 import type { FamilyRequest } from '../lib/familyConnections';
 
 type FamilyRequestPanelProps = {
@@ -25,10 +26,7 @@ export function FamilyRequestPanel({
       ) : (
         requests.map((request) => (
           <article className="profile-row" key={request.id}>
-            <div>
-              <h3>{request.profile.displayName}</h3>
-              <p>{request.profile.username ? `@${request.profile.username}` : request.profile.email}</p>
-            </div>
+            <FamilyProfileSummary profile={request.profile} />
             <RequestActions
               request={request}
               isBusy={busyId === request.id}

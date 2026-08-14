@@ -1,11 +1,11 @@
 import { readAccountMode } from './accountMode';
 import { ensureProfile } from './familyConnections';
+import { AVATAR_BUCKET, createAvatarUrl } from './profileAvatars';
 import { readSavedProfile, writeSavedProfile } from './profileLocal';
 import type { SavedProfile } from './profileLocal';
 import { supabase } from './supabase';
 
 const BAD_WORDS = ['admin', 'support', 'moderator', 'fuck', 'shit', 'bitch', 'dick', 'asshole'];
-const AVATAR_BUCKET = 'profile-avatars';
 
 export type UserProfile = {
   email: string;
@@ -125,12 +125,6 @@ async function syncLocalProfile(userId: string, row: ProfileRow, localProfile: S
 
   if (error) return row;
   return { ...row, display_name: localProfile.nickname || row.display_name, username: localProfile.username };
-}
-
-async function createAvatarUrl(path: string) {
-  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, 60 * 60);
-  if (error) return undefined;
-  return data.signedUrl;
 }
 
 function friendlyProfileError(message: string) {

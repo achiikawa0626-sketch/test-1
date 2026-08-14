@@ -1,4 +1,5 @@
 import { Link } from 'wouter';
+import { FamilyProfileSummary } from './FamilyProfileSummary';
 import type { FamilyProfile, FamilyRequest } from '../lib/familyConnections';
 import type { AccountMode } from '../lib/accountMode';
 
@@ -77,10 +78,7 @@ function SearchResult({ profile, request, sendingId, onRequest }: SearchResultPr
 
   return (
     <article className="profile-row">
-      <div>
-        <h3>{profile.displayName}</h3>
-        <p>{profile.username ? `@${profile.username}` : profile.email}</p>
-      </div>
+      <FamilyProfileSummary profile={profile} />
       <button
         type="button"
         disabled={Boolean(request) || isBusy}

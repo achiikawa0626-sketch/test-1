@@ -1,6 +1,7 @@
 import type { AccountMode } from './accountMode';
 import { readAccountMode } from './accountMode';
 import { friendlyFamilyError } from './familyErrors';
+import { createAvatarUrl } from './profileAvatars';
 import { supabase } from './supabase';
 
 export type FamilyProfile = {
@@ -9,6 +10,7 @@ export type FamilyProfile = {
   displayName: string;
   username?: string;
   accountMode: AccountMode;
+  avatarUrl?: string;
 };
 
 export type FamilyRequest = {
@@ -24,6 +26,7 @@ type ProfileRow = {
   display_name: string;
   username?: string | null;
   account_mode: AccountMode;
+  avatar_path?: string | null;
 };
 
 type RequestRow = {
@@ -38,16 +41,13 @@ type RequestRow = {
 export async function ensureProfile() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new Error('Log in before finding family.');
-
   const email = data.user.email ?? '';
   const displayName = data.user.user_metadata.full_name ?? email.split('@')[0] ?? 'Family member';
-
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
     .eq('id', data.user.id)
     .maybeSingle();
-
   const profileRequest = profile
     ? supabase
         .from('profiles')
@@ -64,9 +64,7 @@ export async function ensureProfile() {
         account_mode: readAccountMode(),
         updated_at: new Date().toISOString(),
       });
-
   const { error: profileError } = await profileRequest;
-
   if (profileError) throw friendlyFamilyError(profileError.message);
   return data.user.id;
 }
@@ -77,7 +75,7 @@ export async function searchFamilyProfiles(searchText: string) {
     search_text: searchText.trim(),
   });
   if (error) throw friendlyFamilyError(error.message);
-  return ((data ?? []) as ProfileRow[]).map(toProfile);
+  return Promise.all(((data ?? []) as ProfileRow[]).map(toProfile));
 }
 
 export async function sendFamilyRequest(receiverId: string) {
@@ -99,13 +97,11 @@ export async function respondToFamilyRequest(requestId: string, status: 'accepte
     .from('family_requests')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', requestId);
-
   if (error) throw friendlyFamilyError(error.message);
 }
 
 export async function cancelFamilyRequest(requestId: string) {
   const { error } = await supabase.from('family_requests').delete().eq('id', requestId);
-
   if (error) throw friendlyFamilyError(error.message);
 }
 
@@ -114,23 +110,22 @@ export async function loadFamilyRequests() {
   const { data, error } = await supabase
     .from('family_requests')
     .select(
-      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
+      'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
     )
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
     .order('created_at', { ascending: false });
   if (error) throw friendlyFamilyError(error.message);
-  return ((data ?? []) as RequestRow[]).map((request) => {
+  return Promise.all(((data ?? []) as RequestRow[]).map(async (request) => {
     const direction: FamilyRequest['direction'] =
       request.requester_id === userId ? 'outgoing' : 'incoming';
     const profile = direction === 'outgoing' ? request.receiver : request.requester;
-
     return {
       id: request.id,
       status: request.status,
       direction,
-      profile: toProfile(readProfile(profile)),
+      profile: await toProfile(readProfile(profile)),
     };
-  });
+  }));
 }
 
 function readProfile(profile: ProfileRow | ProfileRow[] | null) {
@@ -139,12 +134,13 @@ function readProfile(profile: ProfileRow | ProfileRow[] | null) {
   return profile;
 }
 
-function toProfile(row: ProfileRow): FamilyProfile {
+async function toProfile(row: ProfileRow): Promise<FamilyProfile> {
   return {
     id: row.id,
     email: row.email,
     displayName: row.display_name,
     username: row.username ?? undefined,
     accountMode: row.account_mode,
+    avatarUrl: row.avatar_path ? await createAvatarUrl(row.avatar_path) : undefined,
   };
 }

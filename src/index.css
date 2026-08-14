@@ -406,6 +406,33 @@ button.small { padding: 6px 10px; font-size: 14px; }
   overflow-wrap: anywhere;
 }
 
+.profile-person {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.profile-avatar-small {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f7cfb8, #82a8a7);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.profile-avatar-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .profile-editor {
   display: grid;
   gap: 14px;

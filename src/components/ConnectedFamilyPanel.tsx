@@ -1,4 +1,5 @@
 import { Link } from 'wouter';
+import { FamilyProfileSummary } from './FamilyProfileSummary';
 import type { FamilyRequest } from '../lib/familyConnections';
 
 type ConnectedFamilyPanelProps = {
@@ -15,10 +16,7 @@ export function ConnectedFamilyPanel({ requests }: ConnectedFamilyPanelProps) {
         <>
           {requests.map((request) => (
             <article className="profile-row" key={request.id}>
-              <div>
-                <h3>{request.profile.displayName}</h3>
-                <p>{request.profile.username ? `@${request.profile.username}` : request.profile.email}</p>
-              </div>
+              <FamilyProfileSummary profile={request.profile} />
               <span className="request-chip request-chip--connected">Connected</span>
             </article>
           ))}
