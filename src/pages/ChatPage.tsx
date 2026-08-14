@@ -45,15 +45,18 @@ export function ChatPage() {
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    Promise.all([loadChatContacts(), loadChatStreak()])
-      .then(([nextContacts, nextStreak]) => {
+    loadChatContacts()
+      .then((nextContacts) => {
         setContacts(nextContacts);
         setActiveContact((contact) => contact ?? nextContacts[0]);
-        setStreak(nextStreak);
       })
       .catch((error: unknown) => {
-        setMessage(error instanceof Error ? error.message : 'Could not load chat.');
+        setMessage(error instanceof Error ? error.message : 'Could not load chat contacts.');
       });
+
+    loadChatStreak()
+      .then(setStreak)
+      .catch(() => setStreak({ currentStreak: 0, bestStreak: 0 }));
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -71,20 +74,32 @@ export function ChatPage() {
 
   async function sendText(text: string) {
     if (!activeContact) return;
-    await sendDirectChat({ contact: activeContact, body: text });
-    await updateStreak();
-    await refreshMessages(activeContact);
+    setMessage('');
+
+    try {
+      await sendDirectChat({ contact: activeContact, body: text });
+      await updateStreak();
+      await refreshMessages(activeContact);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not send message.');
+    }
   }
 
   async function sendMedia(blob: Blob, mediaType: ChatMediaType) {
     if (!activeContact) return;
-    await sendDirectChat({
-      contact: activeContact,
-      media: blob,
-      mediaType: mediaType as DirectChatMediaType,
-    });
-    await updateStreak();
-    await refreshMessages(activeContact);
+    setMessage('');
+
+    try {
+      await sendDirectChat({
+        contact: activeContact,
+        media: blob,
+        mediaType: mediaType as DirectChatMediaType,
+      });
+      await updateStreak();
+      await refreshMessages(activeContact);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not send media.');
+    }
   }
 
   async function updateStreak() {
