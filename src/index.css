@@ -758,6 +758,45 @@ button.small { padding: 6px 10px; font-size: 14px; }
   flex: 1;
 }
 
+.streak-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 16px;
+  background: #fff4dd;
+  color: #7b4a05;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.streak-badge strong {
+  font-size: 15px;
+}
+
+.streak-flame {
+  position: relative;
+  width: 14px;
+  height: 18px;
+  border-radius: 10px 10px 10px 2px;
+  background: linear-gradient(180deg, #ffcf4a, #f06b2f 70%);
+  transform: rotate(45deg);
+}
+
+.streak-flame::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  width: 6px;
+  height: 9px;
+  border-radius: 8px 8px 8px 2px;
+  background: #fff0a8;
+}
+
 .chat-title p {
   margin-top: 2px;
   color: rgba(255, 255, 255, 0.78);

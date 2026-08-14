@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'wouter';
-import { Auth } from '../components/Auth';
-import { AuthStatus } from '../components/AuthStatus';
-import { ChatComposer } from '../components/ChatComposer';
-import { ChatMessages } from '../components/ChatMessages';
-import { FamilyChatProfileEditor } from '../components/FamilyChatProfileEditor';
+import { ChatHeader } from '../components/ChatHeader';
+import { ChatShell } from '../components/ChatShell';
 import { readAccountMode } from '../lib/accountMode';
 import { loadFamilyChatProfile, saveFamilyChatProfile } from '../lib/familyChatProfile';
 import type { FamilyChatProfile } from '../lib/familyChatProfile';
-import { loadDirectChat, sendDirectChat } from '../lib/directChat';
+import { loadChatContacts, loadDirectChat, sendDirectChat } from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
+import { loadChatStreak, recordChatStreak } from '../lib/chatStreak';
+import type { ChatStreak } from '../lib/chatStreak';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
 import type { FamilyProfile } from '../lib/familyConnections';
 import { supabase } from '../lib/supabase';
 
 export function ChatPage() {
   const [mode] = useState(readAccountMode);
-  const [contacts] = useState<FamilyProfile[]>([]);
+  const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [activeContact, setActiveContact] = useState<FamilyProfile>();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
+  const [streak, setStreak] = useState<ChatStreak>({ currentStreak: 0, bestStreak: 0 });
   const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -46,7 +45,21 @@ export function ChatPage() {
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    refreshMessages().catch((error: unknown) => {
+    Promise.all([loadChatContacts(), loadChatStreak()])
+      .then(([nextContacts, nextStreak]) => {
+        setContacts(nextContacts);
+        setActiveContact((contact) => contact ?? nextContacts[0]);
+        setStreak(nextStreak);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : 'Could not load chat.');
+      });
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !activeContact) return;
+
+    refreshMessages(activeContact).catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : 'Could not load messages.');
     });
   }, [activeContact?.id, isLoggedIn]);
@@ -59,6 +72,7 @@ export function ChatPage() {
   async function sendText(text: string) {
     if (!activeContact) return;
     await sendDirectChat({ contact: activeContact, body: text });
+    await updateStreak();
     await refreshMessages(activeContact);
   }
 
@@ -69,7 +83,16 @@ export function ChatPage() {
       media: blob,
       mediaType: mediaType as DirectChatMediaType,
     });
+    await updateStreak();
     await refreshMessages(activeContact);
+  }
+
+  async function updateStreak() {
+    try {
+      setStreak(await recordChatStreak());
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not update streak.');
+    }
   }
 
   const chatMessages: ChatMessage[] = messages.map((item) => ({
@@ -80,76 +103,26 @@ export function ChatPage() {
     mediaUrl: item.mediaUrl,
     createdAt: item.createdAt,
   }));
-  const storyText = chatMessages
-    .map((item) => `${item.senderRole}: ${item.body}`)
-    .filter((line) => line.trim().length > 0)
-    .join('\n');
-
   return (
     <main className="chat-page">
-      <header className="chat-header">
-        <Link className="chat-back" href="/find-family">Back</Link>
-        <FamilyChatProfileEditor
-          profile={familyProfile}
-          onChange={changeFamilyProfile}
-          onMessage={setMessage}
-        />
-        <AuthStatus compact />
-      </header>
-
-      <section className="chat-shell">
-        {!isAuthReady ? (
-          <div className="chat-empty">
-            <p>Checking your login...</p>
-          </div>
-        ) : !isLoggedIn ? (
-          <div className="chat-login-panel">
-            <div>
-              <p>Log in before chat.</p>
-              <span>Use Google or email first, then connect your family.</span>
-            </div>
-            <Auth />
-          </div>
-        ) : (
-          <>
-        <div className="chat-contact-strip">
-          {contacts.length === 0 ? (
-            <Link className="text-button" href="/find-family">Find family</Link>
-          ) : (
-            contacts.map((contact) => (
-              <button
-                className={activeContact?.id === contact.id ? 'chat-contact active' : 'chat-contact'}
-                key={contact.id}
-                type="button"
-                onClick={() => setActiveContact(contact)}
-              >
-                {contact.displayName}
-              </button>
-            ))
-          )}
-        </div>
-
-        {message && <p className="message">{message}</p>}
-        {activeContact ? (
-          <>
-            <ChatMessages messages={chatMessages} />
-            <ChatComposer
-              mode={mode}
-              storyText={storyText}
-              onSendText={sendText}
-              onSendMedia={sendMedia}
-            />
-          </>
-        ) : (
-          <div className="chat-empty">
-            <p>No family connected yet.</p>
-            <span>Send or accept a family request, then this becomes your real chat.</span>
-            <Link className="text-button" href="/find-family">Find family</Link>
-          </div>
-        )}
-          </>
-        )}
-      </section>
+      <ChatHeader
+        familyProfile={familyProfile}
+        streak={streak}
+        onProfileChange={changeFamilyProfile}
+        onMessage={setMessage}
+      />
+      <ChatShell
+        mode={mode}
+        contacts={contacts}
+        activeContact={activeContact}
+        messages={chatMessages}
+        message={message}
+        isAuthReady={isAuthReady}
+        isLoggedIn={isLoggedIn}
+        onContactChange={setActiveContact}
+        onSendText={sendText}
+        onSendMedia={sendMedia}
+      />
     </main>
   );
 }
