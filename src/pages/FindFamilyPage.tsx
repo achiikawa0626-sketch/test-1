@@ -3,7 +3,6 @@ import { Link } from 'wouter';
 import { AuthStatus } from '../components/AuthStatus';
 import { readAccountMode } from '../lib/accountMode';
 import {
-  loadRecentFamilyProfiles,
   loadFamilyRequests,
   respondToFamilyRequest,
   searchFamilyProfiles,
@@ -14,7 +13,6 @@ import type { FamilyProfile, FamilyRequest } from '../lib/familyConnections';
 export function FindFamilyPage() {
   const mode = readAccountMode();
   const [query, setQuery] = useState('');
-  const [recentProfiles, setRecentProfiles] = useState<FamilyProfile[]>([]);
   const [results, setResults] = useState<FamilyProfile[]>([]);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
   const [message, setMessage] = useState('');
@@ -23,12 +21,8 @@ export function FindFamilyPage() {
     setRequests(await loadFamilyRequests());
   }
 
-  async function refreshRecentProfiles() {
-    setRecentProfiles(await loadRecentFamilyProfiles());
-  }
-
   useEffect(() => {
-    Promise.all([refreshRequests(), refreshRecentProfiles()]).catch((error: unknown) => {
+    refreshRequests().catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : 'Could not load family accounts.');
     });
   }, []);
@@ -75,8 +69,6 @@ export function FindFamilyPage() {
   const outgoing = requests.filter(
     (request) => request.status === 'pending' && request.direction === 'outgoing',
   );
-  const visibleProfiles = results.length > 0 ? results : recentProfiles;
-  const profileSectionTitle = results.length > 0 ? 'Search results' : 'Recent users';
   return (
     <main className="wide-container">
       <header className="page-header">
@@ -104,11 +96,11 @@ export function FindFamilyPage() {
           {message && <p className="message">{message}</p>}
 
           <div className="profile-results">
-            <h3>{profileSectionTitle}</h3>
-            {visibleProfiles.length === 0 ? (
-              <p className="empty">No accounts to show yet.</p>
+            <h3>Search results</h3>
+            {results.length === 0 ? (
+              <p className="empty">Search by email or username to find an account.</p>
             ) : (
-              visibleProfiles.map((profile) => (
+              results.map((profile) => (
               <article className="profile-row" key={profile.id}>
                 <div>
                   <h3>{profile.displayName}</h3>

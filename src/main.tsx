@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { Router } from 'wouter';
 import App from './App.tsx';
 import './index.css';
-import { routerBase } from './lib/routes';
+import { restoreGitHubPagesRoute, routerBase } from './lib/routes';
+
+restoreGitHubPagesRoute();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
