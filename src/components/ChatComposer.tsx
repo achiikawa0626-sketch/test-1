@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChatRecorder } from './ChatRecorder';
 import { QuestionSuggestions } from './QuestionSuggestions';
 import { generateFollowUpQuestions } from '../lib/aiQuestions';
@@ -8,11 +8,18 @@ import type { ChatMediaType } from '../lib/chat';
 type ChatComposerProps = {
   mode: AccountMode;
   storyText: string;
+  initialText: string;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
 
-export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatComposerProps) {
+export function ChatComposer({
+  mode,
+  storyText,
+  initialText,
+  onSendText,
+  onSendMedia,
+}: ChatComposerProps) {
   const [text, setText] = useState('');
   const [aiMessage, setAiMessage] = useState('');
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
@@ -20,7 +27,11 @@ export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatC
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isQuestionPanelOpen, setIsQuestionPanelOpen] = useState(false);
   const canAskQuestions = mode === 'kid';
-  const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['video'] : ['audio', 'video'];
+  const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['audio'] : ['audio', 'video'];
+
+  useEffect(() => {
+    if (initialText.trim()) setText(initialText);
+  }, [initialText]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();

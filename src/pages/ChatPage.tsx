@@ -18,6 +18,7 @@ export function ChatPage() {
   const [activeContact, setActiveContact] = useState<FamilyProfile>();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
+  const [initialText] = useState(readInitialQuestion);
   const [streak, setStreak] = useState<ChatStreak>({ currentStreak: 0, bestStreak: 0 });
   const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -27,7 +28,6 @@ export function ChatPage() {
     if (!contact) return;
     setMessages(await loadDirectChat(contact.id));
   }
-
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setIsLoggedIn(Boolean(data.user));
@@ -41,7 +41,6 @@ export function ChatPage() {
 
     return () => data.subscription.unsubscribe();
   }, []);
-
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -58,7 +57,6 @@ export function ChatPage() {
       .then(setStreak)
       .catch(() => setStreak({ currentStreak: 0, bestStreak: 0 }));
   }, [isLoggedIn]);
-
   useEffect(() => {
     if (!isLoggedIn || !activeContact) return;
 
@@ -71,7 +69,6 @@ export function ChatPage() {
     setFamilyProfile(nextProfile);
     saveFamilyChatProfile(nextProfile);
   }
-
   async function sendText(text: string) {
     if (!activeContact) return;
     setMessage('');
@@ -84,7 +81,6 @@ export function ChatPage() {
       setMessage(error instanceof Error ? error.message : 'Could not send message.');
     }
   }
-
   async function sendMedia(blob: Blob, mediaType: ChatMediaType) {
     if (!activeContact) return;
     setMessage('');
@@ -132,6 +128,7 @@ export function ChatPage() {
         activeContact={activeContact}
         messages={chatMessages}
         message={message}
+        initialText={initialText}
         isAuthReady={isAuthReady}
         isLoggedIn={isLoggedIn}
         onContactChange={setActiveContact}
@@ -145,4 +142,8 @@ export function ChatPage() {
 function pickContact(contacts: FamilyProfile[]) {
   const contactId = new URLSearchParams(window.location.search).get('contact');
   return contacts.find((contact) => contact.id === contactId) ?? contacts[0];
+}
+
+function readInitialQuestion() {
+  return new URLSearchParams(window.location.search).get('question') ?? '';
 }

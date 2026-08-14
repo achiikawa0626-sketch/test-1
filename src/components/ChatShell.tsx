@@ -12,6 +12,7 @@ type ChatShellProps = {
   activeContact?: FamilyProfile;
   messages: ChatMessage[];
   message: string;
+  initialText: string;
   isAuthReady: boolean;
   isLoggedIn: boolean;
   onContactChange: (contact: FamilyProfile) => void;
@@ -47,6 +48,7 @@ function ChatReady(props: ChatShellProps & { storyText: string }) {
           <ChatComposer
             mode={props.mode}
             storyText={props.storyText}
+            initialText={props.initialText}
             onSendText={props.onSendText}
             onSendMedia={props.onSendMedia}
           />
