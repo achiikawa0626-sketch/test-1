@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { AuthStatus } from '../components/AuthStatus';
+import { ConnectedFamilyPanel } from '../components/ConnectedFamilyPanel';
+import { FamilyRequestPanel } from '../components/FamilyRequestPanel';
+import { FamilySearchCard } from '../components/FamilySearchCard';
 import { readAccountMode } from '../lib/accountMode';
 import {
+  cancelFamilyRequest,
   loadFamilyRequests,
   respondToFamilyRequest,
   searchFamilyProfiles,
@@ -16,6 +20,7 @@ export function FindFamilyPage() {
   const [results, setResults] = useState<FamilyProfile[]>([]);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
   const [message, setMessage] = useState('');
+  const [busyId, setBusyId] = useState('');
 
   async function refreshRequests() {
     setRequests(await loadFamilyRequests());
@@ -23,7 +28,7 @@ export function FindFamilyPage() {
 
   useEffect(() => {
     refreshRequests().catch((error: unknown) => {
-      setMessage(error instanceof Error ? error.message : 'Could not load family accounts.');
+      setMessage(error instanceof Error ? error.message : 'Could not load family requests.');
     });
   }, []);
 
@@ -35,7 +40,7 @@ export function FindFamilyPage() {
       const foundProfiles = await searchFamilyProfiles(query);
       setResults(foundProfiles);
       if (foundProfiles.length === 0) {
-        setMessage('No family account found yet. Ask them to create an account, then try again.');
+        setMessage('No account found. Check the email or username and try again.');
       }
     } catch (error) {
       setResults([]);
@@ -44,157 +49,102 @@ export function FindFamilyPage() {
   }
 
   async function requestFamily(profileId: string) {
+    setBusyId(profileId);
+    setMessage('');
+
     try {
       await sendFamilyRequest(profileId);
-      setMessage('Family request sent.');
       await refreshRequests();
+      setMessage('Request sent. It will appear under Sent requests until they accept.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send request.');
+    } finally {
+      setBusyId('');
     }
   }
 
   async function respond(requestId: string, status: 'accepted' | 'declined') {
+    setBusyId(requestId);
+    setMessage('');
+
     try {
       await respondToFamilyRequest(requestId, status);
       await refreshRequests();
+      setMessage(status === 'accepted' ? 'Family request accepted.' : 'Family request declined.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not update request.');
+    } finally {
+      setBusyId('');
     }
   }
 
-  const accepted = requests.filter((request) => request.status === 'accepted');
-  const incoming = requests.filter(
-    (request) => request.status === 'pending' && request.direction === 'incoming',
-  );
-  const outgoing = requests.filter(
-    (request) => request.status === 'pending' && request.direction === 'outgoing',
-  );
+  async function cancel(requestId: string) {
+    setBusyId(requestId);
+    setMessage('');
+
+    try {
+      await cancelFamilyRequest(requestId);
+      await refreshRequests();
+      setMessage('Request canceled.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not cancel request.');
+    } finally {
+      setBusyId('');
+    }
+  }
+
   return (
     <main className="wide-container">
       <header className="page-header">
         <Link href="/">AskGrandma</Link>
-        <h1>Find your family</h1>
-        <p>Search by email, send a request, and connect before opening family chats.</p>
+        <h1>Family requests</h1>
+        <p>Find someone by email or username, send a request, and connect after they accept.</p>
         <AuthStatus />
       </header>
 
       <section className="family-connect">
-        <div className="card">
-          <h2>Your role</h2>
-          <p className="locked-role">
-            {mode === 'kid' ? 'Child or parent' : 'Grandma or granddad'}
-          </p>
-          <Link className="text-button" href="/profile">Edit profile</Link>
-          <form className="family-search" onSubmit={search}>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={mode === 'kid' ? "Grandma's email" : "Kid or parent's email"}
-            />
-            <button type="submit">Find</button>
-          </form>
-          {message && <p className="message">{message}</p>}
-
-          <div className="profile-results">
-            <h3>Search results</h3>
-            {results.length === 0 ? (
-              <p className="empty">Search by email or username to find an account.</p>
-            ) : (
-              results.map((profile) => (
-              <article className="profile-row" key={profile.id}>
-                <div>
-                  <h3>{profile.displayName}</h3>
-                  <p>{profile.username ? `@${profile.username}` : profile.email}</p>
-                </div>
-                <button type="button" onClick={() => void requestFamily(profile.id)}>
-                  Request
-                </button>
-              </article>
-              ))
-            )}
-          </div>
-        </div>
+        <FamilySearchCard
+          mode={mode}
+          query={query}
+          results={results}
+          requests={requests}
+          message={message}
+          sendingId={busyId}
+          onQueryChange={setQuery}
+          onSearch={search}
+          onRequest={(profileId) => void requestFamily(profileId)}
+        />
 
         <div className="family-panels">
-          <RequestPanel
+          <FamilyRequestPanel
             title="Requests to accept"
-            empty="No one is waiting yet."
-            requests={incoming}
-            onRespond={respond}
+            empty="When someone asks to connect, you can accept or decline here."
+            requests={requests.filter(isIncomingPending)}
+            busyId={busyId}
+            onRespond={(requestId, status) => void respond(requestId, status)}
+            onCancel={(requestId) => void cancel(requestId)}
           />
-          <RequestPanel
+          <FamilyRequestPanel
             title="Sent requests"
-            empty="No sent requests yet."
-            requests={outgoing}
-            onRespond={respond}
+            empty="Requests you send will stay here until the other person answers."
+            requests={requests.filter(isOutgoingPending)}
+            busyId={busyId}
+            onRespond={(requestId, status) => void respond(requestId, status)}
+            onCancel={(requestId) => void cancel(requestId)}
           />
-          <ConnectedPanel requests={accepted} />
+          <ConnectedFamilyPanel
+            requests={requests.filter((request) => request.status === 'accepted')}
+          />
         </div>
       </section>
     </main>
   );
 }
 
-type RequestPanelProps = {
-  title: string;
-  empty: string;
-  requests: FamilyRequest[];
-  onRespond: (requestId: string, status: 'accepted' | 'declined') => Promise<void>;
-};
-
-function RequestPanel({ title, empty, requests, onRespond }: RequestPanelProps) {
-  return (
-    <section className="card request-panel">
-      <h2>{title}</h2>
-      {requests.length === 0 ? (
-        <p className="empty">{empty}</p>
-      ) : (
-        requests.map((request) => (
-          <article className="profile-row" key={request.id}>
-            <div>
-              <h3>{request.profile.displayName}</h3>
-              <p>{request.profile.email}</p>
-            </div>
-            {request.direction === 'incoming' && (
-              <div className="request-actions">
-                <button type="button" onClick={() => void onRespond(request.id, 'accepted')}>
-                  Accept
-                </button>
-                <button
-                  className="ghost"
-                  type="button"
-                  onClick={() => void onRespond(request.id, 'declined')}
-                >
-                  Decline
-                </button>
-              </div>
-            )}
-          </article>
-        ))
-      )}
-    </section>
-  );
+function isIncomingPending(request: FamilyRequest) {
+  return request.status === 'pending' && request.direction === 'incoming';
 }
 
-function ConnectedPanel({ requests }: { requests: FamilyRequest[] }) {
-  return (
-    <section className="card request-panel">
-      <h2>Your family</h2>
-      {requests.length === 0 ? (
-        <p className="empty">Connect with family first, then start asking questions.</p>
-      ) : (
-        <>
-          {requests.map((request) => (
-            <article className="profile-row" key={request.id}>
-              <div>
-                <h3>{request.profile.displayName}</h3>
-                <p>{request.profile.email}</p>
-              </div>
-            </article>
-          ))}
-          <Link className="text-button" href="/questions">Start questions</Link>
-        </>
-      )}
-    </section>
-  );
+function isOutgoingPending(request: FamilyRequest) {
+  return request.status === 'pending' && request.direction === 'outgoing';
 }

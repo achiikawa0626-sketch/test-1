@@ -105,6 +105,12 @@ export async function respondToFamilyRequest(requestId: string, status: 'accepte
   if (error) throw friendlyFamilyError(error.message);
 }
 
+export async function cancelFamilyRequest(requestId: string) {
+  const { error } = await supabase.from('family_requests').delete().eq('id', requestId);
+
+  if (error) throw friendlyFamilyError(error.message);
+}
+
 export async function loadFamilyRequests() {
   const userId = await ensureProfile();
   const { data, error } = await supabase

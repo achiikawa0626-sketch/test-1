@@ -368,6 +368,11 @@ button.small { padding: 6px 10px; font-size: 14px; }
   gap: 10px;
 }
 
+.family-search-card {
+  display: grid;
+  gap: 18px;
+}
+
 .profile-results,
 .family-panels,
 .request-panel {
@@ -470,8 +475,31 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .request-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   justify-content: end;
+}
+
+.request-chip {
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #fff4dd;
+  color: #7b4a05;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.request-chip--connected {
+  background: #eaf6ef;
+  color: #287247;
+}
+
+.family-next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 4px;
 }
 
 .question-list {
