@@ -3,28 +3,26 @@ import type { ChatMessage } from '../lib/chat';
 
 type MessageActionMenuProps = {
   message: ChatMessage;
+  placement: 'bottom' | 'top';
   onClose: () => void;
   onCopy: (text: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onFavorite: (message: ChatMessage) => Promise<void>;
-  onForward: (message: ChatMessage) => Promise<void>;
   onPin: (message: ChatMessage, duration: string) => Promise<void>;
   onReact: (messageId: string, reaction: string) => Promise<void>;
   onReply: (message: ChatMessage) => void;
-  onReport: (message: ChatMessage) => Promise<void>;
 };
 
 export function MessageActionMenu({
   message,
+  placement,
   onClose,
   onCopy,
   onDelete,
   onFavorite,
-  onForward,
   onPin,
   onReact,
   onReply,
-  onReport,
 }: MessageActionMenuProps) {
   const [isPinPanelOpen, setIsPinPanelOpen] = useState(false);
   const [pinDuration, setPinDuration] = useState('7 days');
@@ -37,7 +35,7 @@ export function MessageActionMenu({
   }
 
   return (
-    <div className="message-menu">
+    <div className={`message-menu message-menu--${placement}`}>
       <div className="message-menu__reactions" aria-label="Message reactions">
         {reactions.map((reaction) => (
           <button
@@ -74,10 +72,6 @@ export function MessageActionMenu({
           <span>☺</span>
           React
         </button>
-        <button type="button" onClick={() => void run(() => onForward(message))}>
-          <span>↠</span>
-          Forward
-        </button>
         <button type="button" onClick={() => setIsPinPanelOpen(true)}>
           <span>📌</span>
           Pin
@@ -85,14 +79,6 @@ export function MessageActionMenu({
         <button type="button" onClick={() => void run(() => onFavorite(message))}>
           <span>☆</span>
           Favorite
-        </button>
-        <button
-          className="message-menu__danger"
-          type="button"
-          onClick={() => void run(() => onReport(message))}
-        >
-          <span>⚐</span>
-          Report
         </button>
         {message.isMine && (
           <button

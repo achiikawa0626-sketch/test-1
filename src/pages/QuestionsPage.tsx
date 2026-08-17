@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { AuthStatus } from '../components/AuthStatus';
 import { FamilyProfileSummary } from '../components/FamilyProfileSummary';
+import { QuestionPicker } from '../components/QuestionPicker';
+import { readAccountMode } from '../lib/accountMode';
 import { loadChatContacts } from '../lib/directChat';
 import type { FamilyProfile } from '../lib/familyConnections';
+import { generateFollowUpQuestion } from '../lib/followUpQuestion';
 
 const starterQuestions = [
   'What was your favorite day when you were my age?',
@@ -12,17 +15,54 @@ const starterQuestions = [
 ];
 
 export function QuestionsPage() {
+  const mode = readAccountMode();
   const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [question, setQuestion] = useState(starterQuestions[0]);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [isGeneratingAiQuestion, setIsGeneratingAiQuestion] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     loadChatContacts()
-      .then(setContacts)
+      .then((nextContacts) => {
+        setContacts(nextContacts);
+        void loadAiQuestion(nextContacts);
+      })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : 'Could not load connected family.');
       });
   }, []);
+
+  async function loadAiQuestion(nextContacts: FamilyProfile[]) {
+    if (nextContacts.length === 0) return;
+    setIsGeneratingAiQuestion(true);
+
+    try {
+      const nextQuestion = await generateFollowUpQuestion(nextContacts);
+      setAiQuestion(nextQuestion);
+    } finally {
+      setIsGeneratingAiQuestion(false);
+    }
+  }
+
+  if (mode === 'grandparent') {
+    return (
+      <main className="wide-container">
+        <header className="page-header">
+          <Link href="/">AskGrandma</Link>
+          <h1>Answer in chat</h1>
+          <p>Grandparents receive questions from family and answer them in the private chat.</p>
+          <AuthStatus />
+        </header>
+
+        <section className="card request-panel">
+          <h2>Your role is Grandma or granddad</h2>
+          <p className="empty">Wait for your family to ask a question, or open chat to reply.</p>
+          <Link className="text-button" href="/chat">Open chat</Link>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="wide-container">
@@ -34,7 +74,13 @@ export function QuestionsPage() {
       </header>
 
       <section className="question-chat-grid">
-        <QuestionPicker question={question} onChange={setQuestion} />
+        <QuestionPicker
+          aiQuestion={aiQuestion}
+          isGeneratingAiQuestion={isGeneratingAiQuestion}
+          question={question}
+          starterQuestions={starterQuestions}
+          onChange={setQuestion}
+        />
         <section className="card request-panel">
           <h2>Choose who to ask</h2>
           {message && <p className="message">{message}</p>}
@@ -53,27 +99,6 @@ export function QuestionsPage() {
         </section>
       </section>
     </main>
-  );
-}
-
-type QuestionPickerProps = {
-  question: string;
-  onChange: (question: string) => void;
-};
-
-function QuestionPicker({ question, onChange }: QuestionPickerProps) {
-  return (
-    <section className="card question-picker">
-      <h2>Your question</h2>
-      <textarea value={question} onChange={(event) => onChange(event.target.value)} />
-      <div className="journey-card__questions">
-        {starterQuestions.map((item) => (
-          <button className="ghost question-choice" type="button" key={item} onClick={() => onChange(item)}>
-            {item}
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }
 

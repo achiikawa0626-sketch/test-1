@@ -3,10 +3,11 @@ import type { ChatMediaType } from '../lib/chat';
 
 type ChatRecorderProps = {
   allowedTypes: ChatMediaType[];
+  isSending: boolean;
   onSend: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
 
-export function ChatRecorder({ allowedTypes, onSend }: ChatRecorderProps) {
+export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderProps) {
   const recorderRef = useRef<MediaRecorder>();
   const chunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState<ChatMediaType>();
@@ -33,7 +34,7 @@ export function ChatRecorder({ allowedTypes, onSend }: ChatRecorderProps) {
 
   async function stopAndSend() {
     const recorder = recorderRef.current;
-    if (!recorder || !recording) return;
+    if (!recorder || !recording || isSending) return;
     const mediaType = recording;
 
     recorder.onstop = async () => {
@@ -53,7 +54,7 @@ export function ChatRecorder({ allowedTypes, onSend }: ChatRecorderProps) {
           className="chat-icon-button"
           type="button"
           onClick={() => void start('audio')}
-          disabled={Boolean(recording)}
+          disabled={Boolean(recording) || isSending}
           title="Record voice"
         >
           Mic
@@ -64,15 +65,20 @@ export function ChatRecorder({ allowedTypes, onSend }: ChatRecorderProps) {
           className="chat-icon-button"
           type="button"
           onClick={() => void start('video')}
-          disabled={Boolean(recording)}
+          disabled={Boolean(recording) || isSending}
           title="Record video"
         >
           Camera
         </button>
       )}
       {recording && (
-        <button className="chat-send-recording" type="button" onClick={() => void stopAndSend()}>
-          Send {recording}
+        <button
+          className="chat-send-recording"
+          type="button"
+          onClick={() => void stopAndSend()}
+          disabled={isSending}
+        >
+          {isSending ? 'Sending...' : `Send ${recording}`}
         </button>
       )}
       {message && <p>{message}</p>}

@@ -4,6 +4,7 @@ import { Auth } from '../components/Auth';
 import { AuthStatus } from '../components/AuthStatus';
 import { ChatContactHeader } from '../components/ChatContactHeader';
 import { ChatComposer } from '../components/ChatComposer';
+import { ChatLoading } from '../components/ChatLoading';
 import { ChatMessages } from '../components/ChatMessages';
 import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
@@ -15,6 +16,10 @@ import {
   sendDirectChat,
 } from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
+import {
+  loadDirectChatReactions,
+  saveDirectChatReaction,
+} from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
 import { supabase } from '../lib/supabase';
 
@@ -34,10 +39,21 @@ export function ChatPage() {
   const [myName, setMyName] = useState('You');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  async function refreshMessages(contact = activeContact) {
+  async function refreshMessages(contact = activeContact, showLoading = false) {
     if (!contact) return;
-    setMessages(await loadDirectChat(contact.id));
+    if (showLoading) setIsLoadingMessages(true);
+
+    try {
+      const nextMessages = await loadDirectChat(contact.id);
+      setMessages(nextMessages);
+      setReactions(await loadDirectChatReactions(nextMessages.map((item) => item.id)));
+    } finally {
+      if (showLoading) setIsLoadingMessages(false);
+    }
   }
 
   useEffect(() => {
@@ -63,8 +79,14 @@ export function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn) {
+      setContacts([]);
+      setActiveContact(undefined);
+      setIsLoadingContacts(false);
+      return;
+    }
 
+    setIsLoadingContacts(true);
     loadChatContacts()
       .then((nextContacts) => {
         setContacts(nextContacts);
@@ -72,14 +94,18 @@ export function ChatPage() {
       })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : 'Could not load chat contacts.');
-      });
-
+      })
+      .finally(() => setIsLoadingContacts(false));
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!isLoggedIn || !activeContact) return;
+    if (!isLoggedIn || !activeContact) {
+      setMessages([]);
+      setIsLoadingMessages(false);
+      return;
+    }
 
-    refreshMessages(activeContact).catch((error: unknown) => {
+    refreshMessages(activeContact, true).catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : 'Could not load messages.');
     });
   }, [activeContact?.id, isLoggedIn]);
@@ -93,7 +119,8 @@ export function ChatPage() {
   }, []);
 
   async function sendText(text: string) {
-    if (!activeContact) return;
+    if (!activeContact || isSending) return;
+    setIsSending(true);
     setMessage('');
 
     try {
@@ -102,11 +129,14 @@ export function ChatPage() {
       await refreshMessages(activeContact);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send message.');
+    } finally {
+      setIsSending(false);
     }
   }
 
   async function sendMedia(blob: Blob, mediaType: ChatMediaType) {
-    if (!activeContact) return;
+    if (!activeContact || isSending) return;
+    setIsSending(true);
     setMessage('');
 
     try {
@@ -118,6 +148,8 @@ export function ChatPage() {
       await refreshMessages(activeContact);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send media.');
+    } finally {
+      setIsSending(false);
     }
   }
 
@@ -141,15 +173,14 @@ export function ChatPage() {
     await refreshMessages(activeContact);
   }
 
-  async function forwardMessage(chatMessage: ChatMessage) {
-    const text = chatMessage.body || `${chatMessage.mediaType ?? 'media'} message`;
-    await navigator.clipboard.writeText(`Forwarded message: ${text}`);
-    setMessage('Message ready to forward. It was copied.');
-  }
-
   async function reactToMessage(messageId: string, reaction: string) {
     setReactions((current) => ({ ...current, [messageId]: reaction }));
-    setMessage('Reaction added.');
+    try {
+      await saveDirectChatReaction(messageId, reaction);
+      setMessage('Reaction added.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not save reaction.');
+    }
   }
 
   async function toggleFavorite(chatMessage: ChatMessage) {
@@ -172,10 +203,6 @@ export function ChatPage() {
     setMessage(`Message pinned for ${duration}.`);
   }
 
-  async function reportMessage() {
-    setMessage('Message reported. Thank you.');
-  }
-
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
     senderRole: item.isMine ? mode : activeContact?.accountMode ?? item.senderRole,
@@ -190,6 +217,7 @@ export function ChatPage() {
     mediaUrl: item.mediaUrl,
     createdAt: item.createdAt,
   }));
+  const isLoadingChat = isLoadingContacts || (Boolean(activeContact) && isLoadingMessages);
 
   return (
     <main className={`chat-page chat-page--${mode}`}>
@@ -203,12 +231,17 @@ export function ChatPage() {
         {!isAuthReady ? <ChatEmpty text="Checking your login..." /> : null}
         {isAuthReady && !isLoggedIn ? <ChatLogin /> : null}
         {isAuthReady && isLoggedIn ? (
+          isLoadingChat ? (
+            <ChatLoading text="Loading family chat..." />
+          ) : (
           <>
-            <ContactStrip
-              activeContact={activeContact}
-              contacts={contacts}
-              onContactChange={setActiveContact}
-            />
+            {!isLoadingContacts && (
+              <ContactStrip
+                activeContact={activeContact}
+                contacts={contacts}
+                onContactChange={setActiveContact}
+              />
+            )}
             {message && <p className="message">{message}</p>}
             {initialText && <InitialQuestion text={initialText} />}
             {activeContact ? (
@@ -221,16 +254,15 @@ export function ChatPage() {
                   onCopy={copyMessage}
                   onDelete={deleteMessage}
                   onFavorite={toggleFavorite}
-                  onForward={forwardMessage}
                   onPin={pinMessage}
                   onReact={reactToMessage}
                   onReply={setReplyTo}
-                  onReport={reportMessage}
                 />
                 <ChatComposer
                   mode={mode}
                   initialText={initialText}
                   replyTo={replyTo}
+                  isSending={isSending}
                   onCancelReply={() => setReplyTo(undefined)}
                   onSendText={sendText}
                   onSendMedia={sendMedia}
@@ -243,6 +275,7 @@ export function ChatPage() {
               />
             )}
           </>
+          )
         ) : null}
       </section>
     </main>

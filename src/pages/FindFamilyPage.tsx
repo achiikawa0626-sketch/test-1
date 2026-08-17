@@ -145,6 +145,7 @@ export function FindFamilyPage() {
             onCancel={(requestId) => void cancel(requestId)}
           />
           <ConnectedFamilyPanel
+            mode={mode}
             requests={accepted}
           />
         </div>

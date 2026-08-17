@@ -10,11 +10,9 @@ type ChatMessagesProps = {
   onCopy: (text: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onFavorite: (message: ChatMessage) => Promise<void>;
-  onForward: (message: ChatMessage) => Promise<void>;
   onPin: (message: ChatMessage, duration: string) => Promise<void>;
   onReact: (messageId: string, reaction: string) => Promise<void>;
   onReply: (message: ChatMessage) => void;
-  onReport: (message: ChatMessage) => Promise<void>;
 };
 
 function formatTime(value: string) {
@@ -32,13 +30,11 @@ export function ChatMessages({
   onCopy,
   onDelete,
   onFavorite,
-  onForward,
   onPin,
   onReact,
   onReply,
-  onReport,
 }: ChatMessagesProps) {
-  const [openMessageId, setOpenMessageId] = useState<string>();
+  const [openMenu, setOpenMenu] = useState<{ id: string; placement: 'bottom' | 'top' }>();
   const pinnedMessage = messages.find((message) => {
     const pin = pinnedMessages[message.id];
     return pin && pin.expiresAt > Date.now();
@@ -62,7 +58,7 @@ export function ChatMessages({
         </div>
       )}
       {messages.map((message) => {
-        const isOpen = openMessageId === message.id;
+        const isOpen = openMenu?.id === message.id;
         const pin = pinnedMessages[message.id];
         const activePin = pin && pin.expiresAt > Date.now() ? pin : undefined;
 
@@ -75,7 +71,19 @@ export function ChatMessages({
               className="chat-bubble__menu-trigger"
               type="button"
               aria-label="Open message actions"
-              onClick={() => setOpenMessageId(isOpen ? undefined : message.id)}
+              onClick={(event) => {
+                if (isOpen) {
+                  setOpenMenu(undefined);
+                  return;
+                }
+
+                const rect = event.currentTarget.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                setOpenMenu({
+                  id: message.id,
+                  placement: spaceBelow < 260 ? 'top' : 'bottom',
+                });
+              }}
             >
               +
             </button>
@@ -100,15 +108,14 @@ export function ChatMessages({
             {isOpen && (
               <MessageActionMenu
                 message={message}
-                onClose={() => setOpenMessageId(undefined)}
+                placement={openMenu.placement}
+                onClose={() => setOpenMenu(undefined)}
                 onCopy={onCopy}
                 onDelete={onDelete}
                 onFavorite={onFavorite}
-                onForward={onForward}
                 onPin={onPin}
                 onReact={onReact}
                 onReply={onReply}
-                onReport={onReport}
               />
             )}
             <time>{formatTime(message.createdAt)}</time>

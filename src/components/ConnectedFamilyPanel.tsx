@@ -1,12 +1,14 @@
 import { Link } from 'wouter';
 import { FamilyProfileSummary } from './FamilyProfileSummary';
+import type { AccountMode } from '../lib/accountMode';
 import type { FamilyRequest } from '../lib/familyConnections';
 
 type ConnectedFamilyPanelProps = {
+  mode: AccountMode;
   requests: FamilyRequest[];
 };
 
-export function ConnectedFamilyPanel({ requests }: ConnectedFamilyPanelProps) {
+export function ConnectedFamilyPanel({ mode, requests }: ConnectedFamilyPanelProps) {
   return (
     <section className="card request-panel">
       <h2>Your family</h2>
@@ -22,9 +24,11 @@ export function ConnectedFamilyPanel({ requests }: ConnectedFamilyPanelProps) {
               </Link>
             </article>
           ))}
-          <div className="family-next-actions">
-            <Link className="text-button" href="/questions">Ask questions</Link>
-          </div>
+          {mode === 'kid' && (
+            <div className="family-next-actions">
+              <Link className="text-button" href="/questions">Ask questions</Link>
+            </div>
+          )}
         </>
       )}
     </section>

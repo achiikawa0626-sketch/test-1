@@ -8,6 +8,7 @@ type ChatComposerProps = {
   mode: AccountMode;
   initialText: string;
   replyTo?: ChatMessage;
+  isSending: boolean;
   onCancelReply: () => void;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
@@ -17,6 +18,7 @@ export function ChatComposer({
   mode,
   initialText,
   replyTo,
+  isSending,
   onCancelReply,
   onSendText,
   onSendMedia,
@@ -35,7 +37,7 @@ export function ChatComposer({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!text.trim()) return;
+    if (isSending || !text.trim()) return;
     const replyLabel = replyTo?.senderRole === 'kid' ? 'Kid' : 'Grandma';
     const replyLine = replyTo ? `Reply to ${replyLabel}: "${replyTo.body || 'media'}"\n\n` : '';
     await onSendText(`${replyLine}${text}`);
@@ -87,10 +89,13 @@ export function ChatComposer({
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder={placeholder}
+          disabled={isSending}
         />
-        <button className="chat-send-button" type="submit">Send</button>
+        <button className="chat-send-button" type="submit" disabled={isSending}>
+          {isSending ? 'Sending...' : 'Send'}
+        </button>
       </form>
-      <ChatRecorder allowedTypes={allowedTypes} onSend={onSendMedia} />
+      <ChatRecorder allowedTypes={allowedTypes} isSending={isSending} onSend={onSendMedia} />
     </section>
   );
 }
