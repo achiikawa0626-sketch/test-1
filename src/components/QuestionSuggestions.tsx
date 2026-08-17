@@ -8,15 +8,11 @@ const suggestedQuestions = [
 ];
 
 type QuestionSuggestionsProps = {
-  customQuestion: string;
-  onCustomQuestionChange: (question: string) => void;
   onClose: () => void;
   onPickQuestion: (question: string) => void;
 };
 
 export function QuestionSuggestions({
-  customQuestion,
-  onCustomQuestionChange,
   onClose,
   onPickQuestion,
 }: QuestionSuggestionsProps) {
@@ -39,16 +35,6 @@ export function QuestionSuggestions({
             {question}
           </button>
         ))}
-      </div>
-      <div className="question-suggestions__custom">
-        <input
-          value={customQuestion}
-          onChange={(event) => onCustomQuestionChange(event.target.value)}
-          placeholder="Write your own..."
-        />
-        <button type="button" onClick={() => onPickQuestion(customQuestion)} disabled={!customQuestion.trim()}>
-          Use
-        </button>
       </div>
     </div>
   );

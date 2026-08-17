@@ -32,7 +32,6 @@ export function ChatComposer({
   onSendMedia,
 }: ChatComposerProps) {
   const [text, setText] = useState('');
-  const [customQuestion, setCustomQuestion] = useState('');
   const [isQuestionPanelOpen, setIsQuestionPanelOpen] = useState(false);
   const canAskQuestions = mode === 'kid';
   const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['audio'] : ['audio', 'video'];
@@ -56,7 +55,6 @@ export function ChatComposer({
   function pickQuestion(question: string) {
     if (!question.trim()) return;
     setText(question.trim());
-    setCustomQuestion('');
     setIsQuestionPanelOpen(false);
   }
 
@@ -78,8 +76,6 @@ export function ChatComposer({
       )}
       {canAskQuestions && isQuestionPanelOpen && (
         <QuestionSuggestions
-          customQuestion={customQuestion}
-          onCustomQuestionChange={setCustomQuestion}
           onClose={() => setIsQuestionPanelOpen(false)}
           onPickQuestion={pickQuestion}
         />
