@@ -15,10 +15,16 @@ export function FindFamilyPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FamilyProfile[]>([]);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
+  const [isLoadingFamily, setIsLoadingFamily] = useState(true);
   const [message, setMessage] = useState('');
 
   async function refreshRequests() {
-    setRequests(await loadFamilyRequests());
+    setIsLoadingFamily(true);
+    try {
+      setRequests(await loadFamilyRequests());
+    } finally {
+      setIsLoadingFamily(false);
+    }
   }
 
   useEffect(() => {
@@ -118,17 +124,17 @@ export function FindFamilyPage() {
         <div className="family-panels">
           <RequestPanel
             title="Requests to accept"
-            empty="No one is waiting yet."
+            empty={isLoadingFamily ? 'Loading requests...' : 'No one is waiting yet.'}
             requests={incoming}
             onRespond={respond}
           />
           <RequestPanel
             title="Sent requests"
-            empty="No sent requests yet."
+            empty={isLoadingFamily ? 'Loading sent requests...' : 'No sent requests yet.'}
             requests={outgoing}
             onRespond={respond}
           />
-          <ConnectedPanel requests={accepted} />
+          <ConnectedPanel isLoading={isLoadingFamily} requests={accepted} />
         </div>
       </section>
     </main>
@@ -153,7 +159,7 @@ function RequestPanel({ title, empty, requests, onRespond }: RequestPanelProps) 
           <article className="profile-row" key={request.id}>
             <div>
               <h3>{request.profile.displayName}</h3>
-              <p>{request.profile.email}</p>
+              <p>{profileLabel(request.profile)}</p>
             </div>
             {request.direction === 'incoming' && (
               <div className="request-actions">
@@ -176,20 +182,32 @@ function RequestPanel({ title, empty, requests, onRespond }: RequestPanelProps) 
   );
 }
 
-function ConnectedPanel({ requests }: { requests: FamilyRequest[] }) {
+function ConnectedPanel({
+  isLoading,
+  requests,
+}: {
+  isLoading: boolean;
+  requests: FamilyRequest[];
+}) {
   return (
     <section className="card request-panel">
       <h2>Your family</h2>
-      {requests.length === 0 ? (
-        <p className="empty">Connect with family first, then start asking questions.</p>
+      {isLoading ? (
+        <p className="empty">Loading your family...</p>
+      ) : requests.length === 0 ? (
+        <>
+          <p className="empty">No connected family yet. Search by email or username first.</p>
+          <Link className="text-button" href="/chat">Open chat</Link>
+        </>
       ) : (
         <>
           {requests.map((request) => (
             <article className="profile-row" key={request.id}>
               <div>
                 <h3>{request.profile.displayName}</h3>
-                <p>{request.profile.email}</p>
+                <p>{profileLabel(request.profile)}</p>
               </div>
+              <Link className="text-button" href="/chat">Chat</Link>
             </article>
           ))}
           <Link className="text-button" href="/questions">Start questions</Link>
@@ -197,4 +215,8 @@ function ConnectedPanel({ requests }: { requests: FamilyRequest[] }) {
       )}
     </section>
   );
+}
+
+function profileLabel(profile: FamilyProfile) {
+  return profile.username ? `@${profile.username}` : profile.email;
 }

@@ -104,14 +104,18 @@ async function ensureRemoteProfile(input: {
   fallbackName: string;
   savedRole: AccountMode;
 }) {
-  const { data, error } = await supabase
+  const profileRequest = await supabase
     .from('profiles')
-    .select('display_name, username, account_mode')
+    .select('display_name, account_mode')
     .eq('id', input.id)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (data) return data as ProfileRow;
+  if (profileRequest.error) {
+    throw new Error(profileRequest.error.message);
+  }
+  if (profileRequest.data) {
+    return { ...(profileRequest.data as Omit<ProfileRow, 'username'>), username: null };
+  }
 
   const newProfile = {
     display_name: input.fallbackName,
@@ -141,14 +145,14 @@ async function saveRemoteProfile(input: {
     .eq('id', input.id)
     .maybeSingle();
 
-  const { error } = await supabase.from('profiles').upsert({
+  const profile = {
     id: input.id,
     email: input.email,
     display_name: input.nickname,
-    username: input.username,
     account_mode: (existingProfile?.account_mode as AccountMode | undefined) ?? input.role,
     updated_at: new Date().toISOString(),
-  });
+  };
+  const { error } = await supabase.from('profiles').upsert(profile);
 
   if (error) {
     if (error.message.toLowerCase().includes('duplicate')) {

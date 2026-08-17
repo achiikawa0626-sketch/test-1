@@ -268,12 +268,13 @@ async function loadProfileMode(userId: string): Promise<AccountMode> {
 async function loadProfileName(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('display_name, username')
+    .select('display_name')
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !data) return 'You';
-  return data.username ? `@${data.username}` : data.display_name || 'You';
+  if (error) return 'You';
+  if (!data) return 'You';
+  return data.display_name || 'You';
 }
 
 function pinDurationMs(duration: string) {
