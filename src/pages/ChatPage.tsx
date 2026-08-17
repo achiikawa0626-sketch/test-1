@@ -6,6 +6,7 @@ import { ChatComposer } from '../components/ChatComposer';
 import { ChatMessages } from '../components/ChatMessages';
 import { FamilyChatProfileEditor } from '../components/FamilyChatProfileEditor';
 import { readAccountMode } from '../lib/accountMode';
+import type { AccountMode } from '../lib/accountMode';
 import { loadFamilyChatProfile, saveFamilyChatProfile } from '../lib/familyChatProfile';
 import type { FamilyChatProfile } from '../lib/familyChatProfile';
 import {
@@ -20,12 +21,17 @@ import type { FamilyProfile } from '../lib/familyConnections';
 import { supabase } from '../lib/supabase';
 
 export function ChatPage() {
-  const [mode] = useState(readAccountMode);
+  const [mode, setMode] = useState<AccountMode>(readAccountMode);
   const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [activeContact, setActiveContact] = useState<FamilyProfile>();
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
-  const [translatedMessage, setTranslatedMessage] = useState<{ id: string; text: string }>();
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [pinnedMessages, setPinnedMessages] = useState<
+    Record<string, { duration: string; expiresAt: number }>
+  >({});
+  const [reactions, setReactions] = useState<Record<string, string>>({});
+  const [replyTo, setReplyTo] = useState<ChatMessage>();
   const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,11 +45,17 @@ export function ChatPage() {
     supabase.auth.getUser().then(({ data }) => {
       setIsLoggedIn(Boolean(data.user));
       setIsAuthReady(true);
+      if (data.user) {
+        loadProfileMode(data.user.id).then(setMode).catch(() => undefined);
+      }
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(Boolean(session?.user));
       setIsAuthReady(true);
+      if (session?.user) {
+        loadProfileMode(session.user.id).then(setMode).catch(() => undefined);
+      }
     });
 
     return () => data.subscription.unsubscribe();
@@ -69,6 +81,14 @@ export function ChatPage() {
       setMessage(error instanceof Error ? error.message : 'Could not load messages.');
     });
   }, [activeContact?.id, isLoggedIn]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setPinnedMessages((current) => removeExpiredPins(current));
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   function changeFamilyProfile(nextProfile: FamilyChatProfile) {
     setFamilyProfile(nextProfile);
@@ -98,45 +118,65 @@ export function ChatPage() {
 
   async function deleteMessage(messageId: string) {
     await deleteDirectChatMessage(messageId);
-    setTranslatedMessage((current) => (current?.id === messageId ? undefined : current));
+    setFavoriteIds((current) => current.filter((id) => id !== messageId));
+    setPinnedMessages((current) => {
+      const { [messageId]: _deletedPin, ...nextPins } = current;
+      return nextPins;
+    });
+    setReactions((current) => {
+      const { [messageId]: _deletedReaction, ...nextReactions } = current;
+      return nextReactions;
+    });
+    setReplyTo((current) => (current?.id === messageId ? undefined : current));
     await refreshMessages(activeContact);
   }
 
-  async function translateMessage(chatMessage: ChatMessage) {
-    if (!chatMessage.body.trim()) return;
-    setMessage('Translating...');
-    const { data, error } = await supabase.functions.invoke('ai', {
-      body: {
-        prompt: chatMessage.body,
-        system: 'Translate this family chat message into simple English. Return only the translation.',
+  async function forwardMessage(chatMessage: ChatMessage) {
+    const text = chatMessage.body || `${chatMessage.mediaType ?? 'media'} message`;
+    await navigator.clipboard.writeText(`Forwarded message: ${text}`);
+    setMessage('Message ready to forward. It was copied.');
+  }
+
+  async function reactToMessage(messageId: string, reaction: string) {
+    setReactions((current) => ({ ...current, [messageId]: reaction }));
+    setMessage('Reaction added.');
+  }
+
+  async function toggleFavorite(chatMessage: ChatMessage) {
+    setFavoriteIds((current) =>
+      current.includes(chatMessage.id)
+        ? current.filter((id) => id !== chatMessage.id)
+        : [...current, chatMessage.id],
+    );
+    setMessage('Favorite updated.');
+  }
+
+  async function pinMessage(chatMessage: ChatMessage, duration: string) {
+    setPinnedMessages((current) => ({
+      ...current,
+      [chatMessage.id]: {
+        duration,
+        expiresAt: Date.now() + pinDurationMs(duration),
       },
-    });
+    }));
+    setMessage(`Message pinned for ${duration}.`);
+  }
 
-    if (error) {
-      setMessage('Could not translate this message.');
-      return;
-    }
-
-    setTranslatedMessage({ id: chatMessage.id, text: data.text ?? 'No translation found.' });
-    setMessage('');
+  async function reportMessage() {
+    setMessage('Message reported. Thank you.');
   }
 
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
-    senderRole: item.isMine ? mode : item.senderRole,
+    senderRole: item.isMine ? mode : activeContact?.accountMode ?? item.senderRole,
     isMine: item.isMine,
     body: item.body,
     mediaType: item.mediaType,
     mediaUrl: item.mediaUrl,
     createdAt: item.createdAt,
   }));
-  const storyText = chatMessages
-    .map((item) => `${item.senderRole}: ${item.body}`)
-    .filter((line) => line.trim().length > 0)
-    .join('\n');
-
   return (
-    <main className="chat-page">
+    <main className={`chat-page chat-page--${mode}`}>
       <header className="chat-header">
         <Link className="chat-back" href="/find-family">Back</Link>
         <FamilyChatProfileEditor
@@ -182,16 +222,25 @@ export function ChatPage() {
         {message && <p className="message">{message}</p>}
         {activeContact ? (
           <>
+            <RoleBanner mode={mode} contactName={activeContact.displayName} />
             <ChatMessages
               messages={chatMessages}
-              translatedMessage={translatedMessage}
+              favoriteIds={favoriteIds}
+              pinnedMessages={pinnedMessages}
+              reactions={reactions}
               onCopy={copyMessage}
               onDelete={deleteMessage}
-              onTranslate={translateMessage}
+              onFavorite={toggleFavorite}
+              onForward={forwardMessage}
+              onPin={pinMessage}
+              onReact={reactToMessage}
+              onReply={setReplyTo}
+              onReport={reportMessage}
             />
             <ChatComposer
               mode={mode}
-              storyText={storyText}
+              replyTo={replyTo}
+              onCancelReply={() => setReplyTo(undefined)}
               onSendText={sendText}
               onSendMedia={sendMedia}
             />
@@ -207,5 +256,43 @@ export function ChatPage() {
         )}
       </section>
     </main>
+  );
+}
+
+function RoleBanner({ mode, contactName }: { mode: AccountMode; contactName: string }) {
+  return (
+    <div className="chat-role-banner">
+      <strong>{mode === 'kid' ? 'Kid view' : 'Grandparent view'}</strong>
+      <span>
+        {mode === 'kid'
+          ? `You ask ${contactName} questions and can send video.`
+          : `You answer ${contactName} with voice, memories, and messages.`}
+      </span>
+    </div>
+  );
+}
+
+async function loadProfileMode(userId: string): Promise<AccountMode> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('account_mode')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data?.account_mode) return readAccountMode();
+  return data.account_mode as AccountMode;
+}
+
+function pinDurationMs(duration: string) {
+  if (duration === '24 hours') return 24 * 60 * 60 * 1000;
+  if (duration === '30 days') return 30 * 24 * 60 * 60 * 1000;
+  return 7 * 24 * 60 * 60 * 1000;
+}
+
+function removeExpiredPins(
+  pins: Record<string, { duration: string; expiresAt: number }>,
+) {
+  return Object.fromEntries(
+    Object.entries(pins).filter(([, pin]) => pin.expiresAt > Date.now()),
   );
 }

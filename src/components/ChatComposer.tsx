@@ -1,32 +1,40 @@
 import { useState } from 'react';
 import { ChatRecorder } from './ChatRecorder';
 import { QuestionSuggestions } from './QuestionSuggestions';
-import { generateFollowUpQuestions } from '../lib/aiQuestions';
 import type { AccountMode } from '../lib/accountMode';
-import type { ChatMediaType } from '../lib/chat';
+import type { ChatMediaType, ChatMessage } from '../lib/chat';
 
 type ChatComposerProps = {
   mode: AccountMode;
-  storyText: string;
+  replyTo?: ChatMessage;
+  onCancelReply: () => void;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
 
-export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatComposerProps) {
+export function ChatComposer({
+  mode,
+  replyTo,
+  onCancelReply,
+  onSendText,
+  onSendMedia,
+}: ChatComposerProps) {
   const [text, setText] = useState('');
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiQuestions, setAiQuestions] = useState<string[]>([]);
   const [customQuestion, setCustomQuestion] = useState('');
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isQuestionPanelOpen, setIsQuestionPanelOpen] = useState(false);
   const canAskQuestions = mode === 'kid';
   const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['video'] : ['audio'];
+  const placeholder =
+    mode === 'kid' ? 'Ask grandma something...' : 'Write an answer or record your voice...';
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!text.trim()) return;
-    await onSendText(text);
+    const replyLabel = replyTo?.senderRole === 'kid' ? 'Kid' : 'Grandma';
+    const replyLine = replyTo ? `Reply to ${replyLabel}: "${replyTo.body || 'media'}"\n\n` : '';
+    await onSendText(`${replyLine}${text}`);
     setText('');
+    onCancelReply();
   }
 
   function pickQuestion(question: string) {
@@ -36,30 +44,20 @@ export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatC
     setIsQuestionPanelOpen(false);
   }
 
-  async function generateQuestions() {
-    setIsGeneratingQuestions(true);
-    setAiMessage('');
-
-    try {
-      const questions = await generateFollowUpQuestions(storyText);
-      setAiQuestions(questions);
-      if (questions.length === 0) setAiMessage('AI did not find a question yet. Try after more chat.');
-    } catch (error) {
-      setAiMessage(error instanceof Error ? error.message : 'Could not create AI questions.');
-    } finally {
-      setIsGeneratingQuestions(false);
-    }
-  }
-
   return (
     <section className="chat-composer">
+      {replyTo && (
+        <div className="chat-reply-draft">
+          <p>Replying to {replyTo.senderRole === 'kid' ? 'Kid' : 'Grandma'}</p>
+          <span>{replyTo.body || 'Media message'}</span>
+          <button type="button" onClick={onCancelReply} aria-label="Cancel reply">
+            ×
+          </button>
+        </div>
+      )}
       {canAskQuestions && isQuestionPanelOpen && (
         <QuestionSuggestions
-          aiMessage={aiMessage}
-          aiQuestions={aiQuestions}
           customQuestion={customQuestion}
-          isGeneratingQuestions={isGeneratingQuestions}
-          onGenerateQuestions={() => void generateQuestions()}
           onCustomQuestionChange={setCustomQuestion}
           onPickQuestion={pickQuestion}
         />
@@ -82,7 +80,7 @@ export function ChatComposer({ mode, storyText, onSendText, onSendMedia }: ChatC
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Message"
+          placeholder={placeholder}
         />
         <button className="chat-send-button" type="submit">Send</button>
       </form>

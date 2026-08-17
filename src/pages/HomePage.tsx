@@ -1,7 +1,29 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { AuthStatus } from '../components/AuthStatus';
+import { HomeFamilyPreview } from '../components/HomeFamilyPreview';
+import { loadFamilyRequests } from '../lib/familyConnections';
+import type { FamilyRequest } from '../lib/familyConnections';
+import { supabase } from '../lib/supabase';
 
 export function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [requests, setRequests] = useState<FamilyRequest[]>([]);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(Boolean(data.user));
+      if (!data.user) return;
+
+      loadFamilyRequests()
+        .then(setRequests)
+        .catch((error: unknown) => {
+          setMessage(error instanceof Error ? error.message : 'Could not load family.');
+        });
+    });
+  }, []);
+
   return (
     <main className="home-page">
       <div className="home-shell">
@@ -23,45 +45,8 @@ export function HomePage() {
           </div>
         </section>
 
-        <AskEveryGenerationCard />
+        <HomeFamilyPreview isLoggedIn={isLoggedIn} message={message} requests={requests} />
       </div>
     </main>
-  );
-}
-
-function AskEveryGenerationCard() {
-  return (
-    <section className="generation-card" aria-label="Ask every generation">
-      <div className="generation-card__question">
-        <span>Question</span>
-        <h2>What does success mean to you?</h2>
-      </div>
-
-      <div className="generation-card__answers">
-        <article className="generation-answer">
-          <div className="generation-answer__avatar">+</div>
-          <div className="generation-answer__body">
-            <h3>Connect real family accounts</h3>
-            <p>
-              Search for grandma, parents, or kids by their account email, send a request, and their
-              answers will appear together here.
-            </p>
-            <Link className="generation-connect-link" href="/find-family">
-              Find family
-            </Link>
-          </div>
-        </article>
-        <article className="generation-answer generation-answer--empty">
-          <div className="generation-answer__avatar">?</div>
-          <div className="generation-answer__body">
-            <h3>No made-up people</h3>
-            <p>
-              This comparison card will use connected profiles only, so every story belongs to a
-              real person in your family.
-            </p>
-          </div>
-        </article>
-      </div>
-    </section>
   );
 }
