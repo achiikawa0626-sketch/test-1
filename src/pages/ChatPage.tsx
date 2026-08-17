@@ -4,7 +4,12 @@ import { ChatShell } from '../components/ChatShell';
 import { readAccountMode } from '../lib/accountMode';
 import { loadFamilyChatProfile, saveFamilyChatProfile } from '../lib/familyChatProfile';
 import type { FamilyChatProfile } from '../lib/familyChatProfile';
-import { loadChatContacts, loadDirectChat, sendDirectChat } from '../lib/directChat';
+import {
+  deleteDirectChatMessage,
+  loadChatContacts,
+  loadDirectChat,
+  sendDirectChat,
+} from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
 import { loadChatStreak, recordChatStreak } from '../lib/chatStreak';
 import type { ChatStreak } from '../lib/chatStreak';
@@ -20,6 +25,7 @@ export function ChatPage() {
   const [message, setMessage] = useState('');
   const [initialText] = useState(readInitialQuestion);
   const [streak, setStreak] = useState<ChatStreak>({ currentStreak: 0, bestStreak: 0 });
+  const [translatedMessage, setTranslatedMessage] = useState<{ id: string; text: string }>();
   const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -57,6 +63,7 @@ export function ChatPage() {
       .then(setStreak)
       .catch(() => setStreak({ currentStreak: 0, bestStreak: 0 }));
   }, [isLoggedIn]);
+
   useEffect(() => {
     if (!isLoggedIn || !activeContact) return;
 
@@ -106,9 +113,40 @@ export function ChatPage() {
     }
   }
 
+  async function copyMessage(text: string) {
+    await navigator.clipboard.writeText(text);
+    setMessage('Message copied.');
+  }
+
+  async function deleteMessage(messageId: string) {
+    await deleteDirectChatMessage(messageId);
+    setTranslatedMessage((current) => (current?.id === messageId ? undefined : current));
+    await refreshMessages(activeContact);
+  }
+
+  async function translateMessage(chatMessage: ChatMessage) {
+    if (!chatMessage.body.trim()) return;
+    setMessage('Translating...');
+    const { data, error } = await supabase.functions.invoke('ai', {
+      body: {
+        prompt: chatMessage.body,
+        system: 'Translate this family chat message into simple English. Return only the translation.',
+      },
+    });
+
+    if (error) {
+      setMessage('Could not translate this message.');
+      return;
+    }
+
+    setTranslatedMessage({ id: chatMessage.id, text: data.text ?? 'No translation found.' });
+    setMessage('');
+  }
+
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
     senderRole: item.isMine ? mode : item.senderRole,
+    isMine: item.isMine,
     body: item.body,
     mediaType: item.mediaType,
     mediaUrl: item.mediaUrl,
@@ -131,8 +169,12 @@ export function ChatPage() {
         initialText={initialText}
         isAuthReady={isAuthReady}
         isLoggedIn={isLoggedIn}
+        translatedMessage={translatedMessage}
         onContactChange={setActiveContact}
         onRefresh={() => void refreshMessages(activeContact)}
+        onCopy={copyMessage}
+        onDelete={deleteMessage}
+        onTranslate={translateMessage}
         onSendText={sendText}
         onSendMedia={sendMedia}
       />

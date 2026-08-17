@@ -2,6 +2,10 @@ import type { ChatMessage } from '../lib/chat';
 
 type ChatMessagesProps = {
   messages: ChatMessage[];
+  translatedMessage?: { id: string; text: string };
+  onCopy: (text: string) => Promise<void>;
+  onDelete: (messageId: string) => Promise<void>;
+  onTranslate: (message: ChatMessage) => Promise<void>;
 };
 
 function formatTime(value: string) {
@@ -11,7 +15,13 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
-export function ChatMessages({ messages }: ChatMessagesProps) {
+export function ChatMessages({
+  messages,
+  translatedMessage,
+  onCopy,
+  onDelete,
+  onTranslate,
+}: ChatMessagesProps) {
   if (messages.length === 0) {
     return (
       <div className="chat-empty">
@@ -35,6 +45,26 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
           {message.mediaType === 'video' && message.mediaUrl && (
             <video src={message.mediaUrl} controls />
           )}
+          {translatedMessage?.id === message.id && (
+            <p className="chat-bubble__translation">{translatedMessage.text}</p>
+          )}
+          <div className="chat-bubble__actions">
+            {message.body && (
+              <>
+                <button type="button" onClick={() => void onCopy(message.body)}>
+                  Copy
+                </button>
+                <button type="button" onClick={() => void onTranslate(message)}>
+                  Translate
+                </button>
+              </>
+            )}
+            {message.isMine && (
+              <button type="button" onClick={() => void onDelete(message.id)}>
+                Delete
+              </button>
+            )}
+          </div>
           <time>{formatTime(message.createdAt)}</time>
         </article>
       ))}

@@ -11,12 +11,16 @@ type ChatShellProps = {
   contacts: FamilyProfile[];
   activeContact?: FamilyProfile;
   messages: ChatMessage[];
+  translatedMessage?: { id: string; text: string };
   message: string;
   initialText: string;
   isAuthReady: boolean;
   isLoggedIn: boolean;
   onContactChange: (contact: FamilyProfile) => void;
   onRefresh: () => void;
+  onCopy: (text: string) => Promise<void>;
+  onDelete: (messageId: string) => Promise<void>;
+  onTranslate: (message: ChatMessage) => Promise<void>;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
@@ -51,7 +55,13 @@ function ChatReady(props: ChatShellProps & { storyText: string }) {
               Refresh
             </button>
           </div>
-          <ChatMessages messages={props.messages} />
+          <ChatMessages
+            messages={props.messages}
+            translatedMessage={props.translatedMessage}
+            onCopy={props.onCopy}
+            onDelete={props.onDelete}
+            onTranslate={props.onTranslate}
+          />
           <ChatComposer
             mode={props.mode}
             storyText={props.storyText}

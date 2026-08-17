@@ -53,9 +53,12 @@ export function FindFamilyPage() {
     setMessage('');
 
     try {
-      await sendFamilyRequest(profileId);
+      const result = await sendFamilyRequest(profileId);
+      setMessage(result === 'accepted' ? 'Family request accepted.' : 'Family request sent.');
       await refreshRequests();
-      setMessage('Request sent. It will appear under Sent requests until they accept.');
+      if (result === 'sent') {
+        setMessage('Request sent. It will appear under Sent requests until they accept.');
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send request.');
     } finally {

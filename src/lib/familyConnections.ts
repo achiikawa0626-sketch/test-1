@@ -7,6 +7,8 @@ import { supabase } from './supabase';
 
 export type { FamilyProfile, FamilyRequest } from './familyTypes';
 
+export type FamilyRequestResult = 'accepted' | 'sent';
+
 type ProfileRow = {
   id: string;
   email: string;
@@ -30,6 +32,7 @@ const requestSelects = [
   'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
   'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, account_mode)',
 ];
+type RequestStatusRow = Pick<RequestRow, 'id' | 'requester_id' | 'receiver_id' | 'status'>;
 
 export async function ensureProfile() {
   const { data, error } = await supabase.auth.getUser();
@@ -71,8 +74,26 @@ export async function searchFamilyProfiles(searchText: string) {
   return Promise.all(((data ?? []) as ProfileRow[]).map(toProfile));
 }
 
-export async function sendFamilyRequest(receiverId: string) {
+export async function sendFamilyRequest(receiverId: string): Promise<FamilyRequestResult> {
   const userId = await ensureProfile();
+  const existingRequest = await findExistingRequest(userId, receiverId);
+
+  if (existingRequest?.status === 'accepted') {
+    throw new Error('You are already connected with this family account.');
+  }
+
+  if (existingRequest?.status === 'pending') {
+    if (existingRequest.receiver_id === userId) {
+      await respondToFamilyRequest(existingRequest.id, 'accepted');
+      return 'accepted';
+    }
+    throw new Error('You already sent this family request.');
+  }
+
+  if (existingRequest?.requester_id === userId) {
+    await deleteFamilyRequest(existingRequest.id);
+  }
+
   const { error } = await supabase.from('family_requests').insert({
     requester_id: userId,
     receiver_id: receiverId,
@@ -83,6 +104,31 @@ export async function sendFamilyRequest(receiverId: string) {
     }
     throw friendlyFamilyError(error.message);
   }
+
+  return 'sent';
+}
+
+async function findExistingRequest(userId: string, receiverId: string) {
+  const { data, error } = await supabase
+    .from('family_requests')
+    .select('id, requester_id, receiver_id, status')
+    .or(
+      `and(requester_id.eq.${userId},receiver_id.eq.${receiverId}),and(requester_id.eq.${receiverId},receiver_id.eq.${userId})`,
+    );
+
+  if (error) throw friendlyFamilyError(error.message);
+  const requests = (data ?? []) as RequestStatusRow[];
+  return (
+    requests.find((request) => request.status === 'accepted') ??
+    requests.find((request) => request.status === 'pending') ??
+    requests[0] ??
+    null
+  );
+}
+
+async function deleteFamilyRequest(requestId: string) {
+  const { error } = await supabase.from('family_requests').delete().eq('id', requestId);
+  if (error) throw friendlyFamilyError(error.message);
 }
 
 export async function respondToFamilyRequest(requestId: string, status: 'accepted' | 'declined') {
