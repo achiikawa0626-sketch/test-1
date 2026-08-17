@@ -80,6 +80,7 @@ export function ChatComposer({
         <QuestionSuggestions
           customQuestion={customQuestion}
           onCustomQuestionChange={setCustomQuestion}
+          onClose={() => setIsQuestionPanelOpen(false)}
           onPickQuestion={pickQuestion}
         />
       )}
