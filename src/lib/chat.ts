@@ -6,6 +6,7 @@ export type ChatMediaType = 'audio' | 'video';
 export type ChatMessage = {
   id: string;
   senderRole: AccountMode;
+  senderName?: string;
   isMine?: boolean;
   body: string;
   mediaType?: ChatMediaType;

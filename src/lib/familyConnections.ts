@@ -49,7 +49,6 @@ export async function ensureProfile() {
         .from('profiles')
         .update({
           email,
-          account_mode: readAccountMode(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', data.user.id)

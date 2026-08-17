@@ -1,4 +1,5 @@
 import { readAccountMode } from './accountMode';
+import type { AccountMode } from './accountMode';
 import { ensureProfile } from './familyConnections';
 import { AVATAR_BUCKET, createAvatarUrl } from './profileAvatars';
 import { readSavedProfile, writeSavedProfile } from './profileLocal';
@@ -19,7 +20,7 @@ type ProfileRow = {
   email: string;
   display_name: string;
   username: string | null;
-  account_mode: 'kid' | 'grandparent';
+  account_mode: AccountMode;
   avatar_path: string | null;
 };
 
@@ -66,21 +67,25 @@ export async function saveUserProfile(input: { nickname: string; username: strin
   await ensureProfile();
 
   const username = input.username.trim().toLowerCase();
+  const nickname = input.nickname.trim() || username;
   const usernameError = validateUsername(username);
   if (usernameError) throw new Error(usernameError);
 
+  const role = readAccountMode();
   const { error } = await supabase
     .from('profiles')
     .update({
-      display_name: input.nickname.trim() || username,
+      display_name: nickname,
       username,
-      account_mode: readAccountMode(),
+      account_mode: role,
       updated_at: new Date().toISOString(),
     })
     .eq('id', user.id);
 
   if (error) throw friendlyProfileError(error.message);
-  writeSavedProfile(user.id, { nickname: input.nickname, username, role: readAccountMode() });
+
+  const saved = readSavedProfile(user.id);
+  writeSavedProfile(user.id, { ...saved, nickname, username, role });
 }
 
 export async function uploadProfileAvatar(file: File) {
@@ -124,7 +129,12 @@ async function syncLocalProfile(userId: string, row: ProfileRow, localProfile: S
     .eq('id', userId);
 
   if (error) return row;
-  return { ...row, display_name: localProfile.nickname || row.display_name, username: localProfile.username };
+
+  return {
+    ...row,
+    display_name: localProfile.nickname || row.display_name,
+    username: localProfile.username,
+  };
 }
 
 function friendlyProfileError(message: string) {

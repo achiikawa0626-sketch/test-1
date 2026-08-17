@@ -19,11 +19,20 @@ export function FindFamilyPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FamilyProfile[]>([]);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
+  const [isLoadingFamily, setIsLoadingFamily] = useState(true);
   const [message, setMessage] = useState('');
   const [busyId, setBusyId] = useState('');
+  const incoming = requests.filter(isIncomingPending);
+  const outgoing = requests.filter(isOutgoingPending);
+  const accepted = requests.filter((request) => request.status === 'accepted');
 
   async function refreshRequests() {
-    setRequests(await loadFamilyRequests());
+    setIsLoadingFamily(true);
+    try {
+      setRequests(await loadFamilyRequests());
+    } finally {
+      setIsLoadingFamily(false);
+    }
   }
 
   useEffect(() => {
@@ -121,22 +130,22 @@ export function FindFamilyPage() {
         <div className="family-panels">
           <FamilyRequestPanel
             title="Requests to accept"
-            empty="When someone asks to connect, you can accept or decline here."
-            requests={requests.filter(isIncomingPending)}
+            empty={isLoadingFamily ? 'Loading requests...' : 'When someone asks to connect, you can accept or decline here.'}
+            requests={incoming}
             busyId={busyId}
             onRespond={(requestId, status) => void respond(requestId, status)}
             onCancel={(requestId) => void cancel(requestId)}
           />
           <FamilyRequestPanel
             title="Sent requests"
-            empty="Requests you send will stay here until the other person answers."
-            requests={requests.filter(isOutgoingPending)}
+            empty={isLoadingFamily ? 'Loading sent requests...' : 'Requests you send will stay here until the other person answers.'}
+            requests={outgoing}
             busyId={busyId}
             onRespond={(requestId, status) => void respond(requestId, status)}
             onCancel={(requestId) => void cancel(requestId)}
           />
           <ConnectedFamilyPanel
-            requests={requests.filter((request) => request.status === 'accepted')}
+            requests={accepted}
           />
         </div>
       </section>
