@@ -221,14 +221,18 @@ export function ChatPage() {
     }
   }
 
-  async function sendMedia(blob: Blob, mediaType: ChatMediaType) {
+  async function sendMedia(blob: Blob, mediaType: ChatMediaType, transcript?: string) {
     if (!activeContact || isSending) return;
     setIsSending(true);
     setMessage('');
+    const transcriptBody = transcript?.trim()
+      ? `Story transcript: ${transcript.trim()}`
+      : undefined;
 
     try {
       await sendDirectChat({
         contact: activeContact,
+        body: transcriptBody,
         media: blob,
         mediaType: mediaType as DirectChatMediaType,
       });

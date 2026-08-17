@@ -15,7 +15,7 @@ type ChatComposerProps = {
   onRefreshFollowUp: () => void;
   onSendFollowUp: (text: string) => Promise<void>;
   onSendText: (text: string) => Promise<void>;
-  onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
+  onSendMedia: (blob: Blob, mediaType: ChatMediaType, transcript?: string) => Promise<void>;
 };
 
 export function ChatComposer({

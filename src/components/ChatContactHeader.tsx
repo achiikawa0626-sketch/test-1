@@ -21,7 +21,7 @@ export function ChatContactHeader({ contact, isOnline }: ChatContactHeaderProps)
           {contact && (
             <span className={isOnline ? 'chat-status online' : 'chat-status offline'}>
               <i />
-              {isOnline ? 'online' : 'offline'}
+              {isOnline ? 'online' : 'away'}
             </span>
           )}
         </p>
