@@ -1,4 +1,5 @@
 import { readAccountMode } from './accountMode';
+import type { AccountMode } from './accountMode';
 import { supabase } from './supabase';
 
 const BAD_WORDS = ['admin', 'support', 'moderator', 'fuck', 'shit', 'bitch', 'dick', 'asshole'];
@@ -14,8 +15,14 @@ export type UserProfile = {
 type SavedProfile = {
   nickname: string;
   username: string;
-  role: 'kid' | 'grandparent';
+  role: AccountMode;
   avatarUrl?: string;
+};
+
+type ProfileRow = {
+  display_name: string;
+  username: string | null;
+  account_mode: AccountMode;
 };
 
 export function validateUsername(username: string) {
@@ -36,30 +43,41 @@ export async function loadUserProfile(): Promise<UserProfile> {
   const saved = readSavedProfile(user.id);
   const email = user.email ?? '';
   const fallbackName = user.user_metadata.full_name ?? email.split('@')[0] ?? 'Family member';
+  const profile = await ensureRemoteProfile({
+    id: user.id,
+    email,
+    fallbackName,
+    savedRole: saved.role,
+  });
 
   return {
     email,
-    nickname: saved.nickname || fallbackName,
-    username: saved.username,
-    role: saved.role,
+    nickname: profile.display_name || saved.nickname || fallbackName,
+    username: profile.username ?? saved.username,
+    role: profile.account_mode,
     avatarUrl: saved.avatarUrl,
   };
 }
 
 export async function saveUserProfile(input: { nickname: string; username: string }) {
   const user = await readUser();
+  const saved = readSavedProfile(user.id);
   const username = input.username.trim().toLowerCase();
+  const nickname = input.nickname.trim() || username;
   const usernameError = validateUsername(username);
   if (usernameError) throw new Error(usernameError);
 
-  if (isTakenUsername(user.id, username)) {
-    throw new Error('This username is already taken on this device.');
-  }
+  await saveRemoteProfile({
+    id: user.id,
+    email: user.email ?? '',
+    nickname,
+    username,
+    role: saved.role,
+  });
 
-  const saved = readSavedProfile(user.id);
   writeSavedProfile(user.id, {
     ...saved,
-    nickname: input.nickname.trim() || username,
+    nickname,
     username,
   });
 }
@@ -80,6 +98,66 @@ async function readUser() {
   return data.user;
 }
 
+async function ensureRemoteProfile(input: {
+  id: string;
+  email: string;
+  fallbackName: string;
+  savedRole: AccountMode;
+}) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('display_name, username, account_mode')
+    .eq('id', input.id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (data) return data as ProfileRow;
+
+  const newProfile = {
+    display_name: input.fallbackName,
+    username: null,
+    account_mode: input.savedRole,
+  };
+  const { error: insertError } = await supabase.from('profiles').insert({
+    id: input.id,
+    email: input.email,
+    ...newProfile,
+  });
+
+  if (insertError) throw new Error(insertError.message);
+  return newProfile;
+}
+
+async function saveRemoteProfile(input: {
+  id: string;
+  email: string;
+  nickname: string;
+  username: string;
+  role: AccountMode;
+}) {
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('account_mode')
+    .eq('id', input.id)
+    .maybeSingle();
+
+  const { error } = await supabase.from('profiles').upsert({
+    id: input.id,
+    email: input.email,
+    display_name: input.nickname,
+    username: input.username,
+    account_mode: (existingProfile?.account_mode as AccountMode | undefined) ?? input.role,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes('duplicate')) {
+      throw new Error('This username is already taken.');
+    }
+    throw new Error(error.message);
+  }
+}
+
 function readSavedProfile(userId: string): SavedProfile {
   const fallback: SavedProfile = {
     nickname: '',
@@ -97,27 +175,6 @@ function readSavedProfile(userId: string): SavedProfile {
 
 function writeSavedProfile(userId: string, profile: SavedProfile) {
   localStorage.setItem(profileKey(userId), JSON.stringify(profile));
-  saveUsernameOwner(userId, profile.username);
-}
-
-function isTakenUsername(userId: string, username: string) {
-  const owners = readUsernameOwners();
-  const owner = owners[username];
-  return Boolean(owner && owner !== userId);
-}
-
-function saveUsernameOwner(userId: string, username: string) {
-  const owners = readUsernameOwners();
-  owners[username] = userId;
-  localStorage.setItem('askgrandma-usernames', JSON.stringify(owners));
-}
-
-function readUsernameOwners(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem('askgrandma-usernames') ?? '{}') as Record<string, string>;
-  } catch {
-    return {};
-  }
 }
 
 function readFileAsDataUrl(file: File) {
