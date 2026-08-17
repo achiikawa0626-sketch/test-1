@@ -1,53 +1,77 @@
 type QuestionPickerProps = {
   aiQuestion: string;
+  canGenerateAiQuestion: boolean;
   isGeneratingAiQuestion: boolean;
   question: string;
   starterQuestions: string[];
   onChange: (question: string) => void;
+  onGenerateAiQuestion: () => void;
 };
 
 export function QuestionPicker({
   aiQuestion,
+  canGenerateAiQuestion,
   isGeneratingAiQuestion,
   question,
   starterQuestions,
   onChange,
+  onGenerateAiQuestion,
 }: QuestionPickerProps) {
   return (
     <section className="card question-picker">
       <h2>Your question</h2>
       <textarea value={question} onChange={(event) => onChange(event.target.value)} />
-      <div className="journey-card__questions">
-        {starterQuestions.map((item) => (
+      <div className="question-picker__section">
+        <div className="question-picker__heading">
+          <h3>AI follow-up from grandma's story</h3>
           <button
-            className="ghost question-choice"
+            className="text-button"
             type="button"
-            key={item}
-            onClick={() => onChange(item)}
+            onClick={onGenerateAiQuestion}
+            disabled={!canGenerateAiQuestion || isGeneratingAiQuestion}
           >
-            {item}
+            {aiQuestion ? 'New follow-up' : 'Make follow-up'}
           </button>
-        ))}
-        {isGeneratingAiQuestion && (
+        </div>
+        {isGeneratingAiQuestion ? (
           <div className="ai-question-loader" role="status" aria-live="polite">
             <span className="ai-question-loader__spark" />
-            <span>Creating a follow-up question</span>
+            <span>Learning the latest story</span>
             <span className="ai-question-loader__dots" aria-hidden="true">
               <i />
               <i />
               <i />
             </span>
           </div>
-        )}
-        {aiQuestion && (
+        ) : aiQuestion ? (
           <button
-            className="ghost question-choice"
+            className="ai-question-button"
             type="button"
             onClick={() => onChange(aiQuestion)}
           >
             {aiQuestion}
           </button>
+        ) : (
+          <p className="ai-question-empty">
+            After grandma or grandpa answers in chat, AI will suggest one question to keep the
+            story going.
+          </p>
         )}
+      </div>
+      <div className="question-picker__section">
+        <h3>Prepared questions</h3>
+        <div className="journey-card__questions">
+          {starterQuestions.map((item) => (
+            <button
+              className="ghost question-choice"
+              type="button"
+              key={item}
+              onClick={() => onChange(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );

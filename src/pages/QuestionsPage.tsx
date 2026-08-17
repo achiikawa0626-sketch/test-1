@@ -36,6 +36,7 @@ export function QuestionsPage() {
   async function loadAiQuestion(nextContacts: FamilyProfile[]) {
     if (nextContacts.length === 0) return;
     setIsGeneratingAiQuestion(true);
+    setAiQuestion('');
 
     try {
       const nextQuestion = await generateFollowUpQuestion(nextContacts);
@@ -76,10 +77,12 @@ export function QuestionsPage() {
       <section className="question-chat-grid">
         <QuestionPicker
           aiQuestion={aiQuestion}
+          canGenerateAiQuestion={contacts.length > 0}
           isGeneratingAiQuestion={isGeneratingAiQuestion}
           question={question}
           starterQuestions={starterQuestions}
           onChange={setQuestion}
+          onGenerateAiQuestion={() => void loadAiQuestion(contacts)}
         />
         <section className="card request-panel">
           <h2>Choose who to ask</h2>
