@@ -1100,6 +1100,10 @@ button.small { padding: 6px 10px; font-size: 14px; }
   cursor: pointer;
 }
 
+.chat-avatar--static {
+  cursor: default;
+}
+
 .chat-avatar img {
   width: 100%;
   height: 100%;
@@ -1117,6 +1121,17 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-title {
   min-width: 0;
   flex: 1;
+}
+
+.chat-title strong {
+  display: block;
+  overflow: hidden;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-title p {
@@ -1231,25 +1246,6 @@ button.small { padding: 6px 10px; font-size: 14px; }
   color: #fff;
 }
 
-.chat-role-banner {
-  display: grid;
-  gap: 3px;
-  padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #315d67;
-}
-
-.chat-role-banner strong {
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.chat-role-banner span {
-  color: #5b676b;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .chat-page--grandparent .chat-header {
   background: #7a4d76;
 }
@@ -1258,10 +1254,6 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-page--grandparent .chat-send-button,
 .chat-page--grandparent .chat-send-recording {
   background: #7a4d76;
-}
-
-.chat-page--grandparent .chat-role-banner {
-  color: #7a4d76;
 }
 
 .chat-messages {

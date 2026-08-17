@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { Auth } from '../components/Auth';
 import { AuthStatus } from '../components/AuthStatus';
+import { ChatContactHeader } from '../components/ChatContactHeader';
 import { ChatComposer } from '../components/ChatComposer';
 import { ChatMessages } from '../components/ChatMessages';
-import { FamilyChatProfileEditor } from '../components/FamilyChatProfileEditor';
 import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
-import { loadFamilyChatProfile, saveFamilyChatProfile } from '../lib/familyChatProfile';
-import type { FamilyChatProfile } from '../lib/familyChatProfile';
 import {
   deleteDirectChatMessage,
   loadChatContacts,
@@ -32,7 +30,7 @@ export function ChatPage() {
   >({});
   const [reactions, setReactions] = useState<Record<string, string>>({});
   const [replyTo, setReplyTo] = useState<ChatMessage>();
-  const [familyProfile, setFamilyProfile] = useState(loadFamilyChatProfile);
+  const [myName, setMyName] = useState('You');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -47,6 +45,7 @@ export function ChatPage() {
       setIsAuthReady(true);
       if (data.user) {
         loadProfileMode(data.user.id).then(setMode).catch(() => undefined);
+        loadProfileName(data.user.id).then(setMyName).catch(() => undefined);
       }
     });
 
@@ -55,6 +54,7 @@ export function ChatPage() {
       setIsAuthReady(true);
       if (session?.user) {
         loadProfileMode(session.user.id).then(setMode).catch(() => undefined);
+        loadProfileName(session.user.id).then(setMyName).catch(() => undefined);
       }
     });
 
@@ -89,11 +89,6 @@ export function ChatPage() {
 
     return () => window.clearInterval(timer);
   }, []);
-
-  function changeFamilyProfile(nextProfile: FamilyChatProfile) {
-    setFamilyProfile(nextProfile);
-    saveFamilyChatProfile(nextProfile);
-  }
 
   async function sendText(text: string) {
     if (!activeContact) return;
@@ -169,6 +164,11 @@ export function ChatPage() {
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
     senderRole: item.isMine ? mode : activeContact?.accountMode ?? item.senderRole,
+    senderName: item.isMine
+      ? myName
+      : activeContact?.username
+        ? `@${activeContact.username}`
+        : activeContact?.displayName,
     isMine: item.isMine,
     body: item.body,
     mediaType: item.mediaType,
@@ -179,11 +179,7 @@ export function ChatPage() {
     <main className={`chat-page chat-page--${mode}`}>
       <header className="chat-header">
         <Link className="chat-back" href="/find-family">Back</Link>
-        <FamilyChatProfileEditor
-          profile={familyProfile}
-          onChange={changeFamilyProfile}
-          onMessage={setMessage}
-        />
+        <ChatContactHeader contact={activeContact} />
         <AuthStatus compact />
       </header>
 
@@ -222,7 +218,6 @@ export function ChatPage() {
         {message && <p className="message">{message}</p>}
         {activeContact ? (
           <>
-            <RoleBanner mode={mode} contactName={activeContact.displayName} />
             <ChatMessages
               messages={chatMessages}
               favoriteIds={favoriteIds}
@@ -259,19 +254,6 @@ export function ChatPage() {
   );
 }
 
-function RoleBanner({ mode, contactName }: { mode: AccountMode; contactName: string }) {
-  return (
-    <div className="chat-role-banner">
-      <strong>{mode === 'kid' ? 'Kid view' : 'Grandparent view'}</strong>
-      <span>
-        {mode === 'kid'
-          ? `You ask ${contactName} questions and can send video.`
-          : `You answer ${contactName} with voice, memories, and messages.`}
-      </span>
-    </div>
-  );
-}
-
 async function loadProfileMode(userId: string): Promise<AccountMode> {
   const { data, error } = await supabase
     .from('profiles')
@@ -281,6 +263,17 @@ async function loadProfileMode(userId: string): Promise<AccountMode> {
 
   if (error || !data?.account_mode) return readAccountMode();
   return data.account_mode as AccountMode;
+}
+
+async function loadProfileName(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('display_name, username')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data) return 'You';
+  return data.username ? `@${data.username}` : data.display_name || 'You';
 }
 
 function pinDurationMs(duration: string) {

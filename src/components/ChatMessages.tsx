@@ -80,7 +80,7 @@ export function ChatMessages({
               +
             </button>
             <p className="chat-bubble__role">
-              {message.senderRole === 'kid' ? 'Kid' : 'Grandma'}
+              {message.senderName ?? (message.senderRole === 'kid' ? 'You' : 'Grandma')}
             </p>
             {message.body && <p className="chat-bubble__text">{message.body}</p>}
             {message.mediaType === 'audio' && message.mediaUrl && (
