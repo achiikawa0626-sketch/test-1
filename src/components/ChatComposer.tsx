@@ -5,21 +5,29 @@ import type { AccountMode } from '../lib/accountMode';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
 
 type ChatComposerProps = {
+  followUpQuestion: string;
   mode: AccountMode;
   initialText: string;
+  isGeneratingFollowUp: boolean;
   replyTo?: ChatMessage;
   isSending: boolean;
   onCancelReply: () => void;
+  onRefreshFollowUp: () => void;
+  onSendFollowUp: (text: string) => Promise<void>;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType) => Promise<void>;
 };
 
 export function ChatComposer({
+  followUpQuestion,
   mode,
   initialText,
+  isGeneratingFollowUp,
   replyTo,
   isSending,
   onCancelReply,
+  onRefreshFollowUp,
+  onSendFollowUp,
   onSendText,
   onSendMedia,
 }: ChatComposerProps) {
@@ -52,6 +60,11 @@ export function ChatComposer({
     setIsQuestionPanelOpen(false);
   }
 
+  async function sendFollowUp() {
+    if (!followUpQuestion.trim() || isSending) return;
+    await onSendFollowUp(followUpQuestion);
+  }
+
   return (
     <section className="chat-composer">
       {replyTo && (
@@ -69,6 +82,33 @@ export function ChatComposer({
           onCustomQuestionChange={setCustomQuestion}
           onPickQuestion={pickQuestion}
         />
+      )}
+      {canAskQuestions && (isGeneratingFollowUp || followUpQuestion) && (
+        <div className="chat-follow-up">
+          <div>
+            <p>AI follow-up</p>
+            <span>
+              {isGeneratingFollowUp
+                ? "Learning grandma's latest story..."
+                : followUpQuestion}
+            </span>
+          </div>
+          {isGeneratingFollowUp ? (
+            <span className="chat-follow-up__spinner" aria-hidden="true" />
+          ) : (
+            <div className="chat-follow-up__actions">
+              <button type="button" onClick={() => pickQuestion(followUpQuestion)}>
+                Use
+              </button>
+              <button type="button" onClick={() => void sendFollowUp()} disabled={isSending}>
+                Send
+              </button>
+              <button type="button" onClick={onRefreshFollowUp}>
+                New
+              </button>
+            </div>
+          )}
+        </div>
       )}
       <form
         className={canAskQuestions ? 'chat-compose-row' : 'chat-compose-row no-plus'}

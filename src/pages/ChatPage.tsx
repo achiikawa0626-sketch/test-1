@@ -21,7 +21,17 @@ import {
   saveDirectChatReaction,
 } from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
+import { generateFollowUpQuestionFromChat } from '../lib/followUpQuestion';
 import { supabase } from '../lib/supabase';
+
+type RealtimeMessageRow = {
+  sender_id?: string;
+  receiver_id?: string;
+};
+
+type ChatPresence = {
+  user_id?: string;
+};
 
 export function ChatPage() {
   const [mode, setMode] = useState<AccountMode>(readAccountMode);
@@ -36,12 +46,16 @@ export function ChatPage() {
   >({});
   const [reactions, setReactions] = useState<Record<string, string>>({});
   const [replyTo, setReplyTo] = useState<ChatMessage>();
+  const [myUserId, setMyUserId] = useState('');
   const [myName, setMyName] = useState('You');
+  const [isContactOnline, setIsContactOnline] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const [isGeneratingFollowUp, setIsGeneratingFollowUp] = useState(false);
 
   async function refreshMessages(contact = activeContact, showLoading = false) {
     if (!contact) return;
@@ -60,6 +74,7 @@ export function ChatPage() {
     supabase.auth.getUser().then(({ data }) => {
       setIsLoggedIn(Boolean(data.user));
       setIsAuthReady(true);
+      setMyUserId(data.user?.id ?? '');
       if (data.user) {
         loadProfileMode(data.user.id).then(setMode).catch(() => undefined);
         loadProfileName(data.user.id).then(setMyName).catch(() => undefined);
@@ -69,6 +84,7 @@ export function ChatPage() {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(Boolean(session?.user));
       setIsAuthReady(true);
+      setMyUserId(session?.user.id ?? '');
       if (session?.user) {
         loadProfileMode(session.user.id).then(setMode).catch(() => undefined);
         loadProfileName(session.user.id).then(setMyName).catch(() => undefined);
@@ -111,12 +127,83 @@ export function ChatPage() {
   }, [activeContact?.id, isLoggedIn]);
 
   useEffect(() => {
+    if (!isLoggedIn || !activeContact) return undefined;
+    let isActive = true;
+
+    const refreshActiveChat = () => {
+      if (!isActive) return;
+      refreshMessages(activeContact).catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : 'Could not refresh messages.');
+      });
+    };
+
+    const channel = supabase
+      .channel(`direct-chat-${activeContact.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'direct_chat_messages' },
+        (payload) => {
+          const row = readRealtimeMessageRow(payload);
+          if (row && isContactMessage(row, activeContact.id)) refreshActiveChat();
+        },
+      )
+      .subscribe();
+    const backupTimer = window.setInterval(refreshActiveChat, 10_000);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(backupTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [activeContact?.id, isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !activeContact || !myUserId) {
+      setIsContactOnline(false);
+      return undefined;
+    }
+
+    const contactId = activeContact.id;
+    const channel = supabase.channel(`presence-${chatRoomId(myUserId, contactId)}`, {
+      config: { presence: { key: myUserId } },
+    });
+
+    function updateOnlineStatus() {
+      const presences = Object.values(channel.presenceState()).flat() as ChatPresence[];
+      setIsContactOnline(presences.some((presence) => presence.user_id === contactId));
+    }
+
+    channel
+      .on('presence', { event: 'sync' }, updateOnlineStatus)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') void channel.track({ user_id: myUserId });
+      });
+
+    return () => {
+      setIsContactOnline(false);
+      void supabase.removeChannel(channel);
+    };
+  }, [activeContact?.id, isLoggedIn, myUserId]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setPinnedMessages((current) => removeExpiredPins(current));
     }, 60_000);
 
     return () => window.clearInterval(timer);
   }, []);
+
+  const latestAnswerId = findLatestGrandparentAnswerId(messages);
+
+  useEffect(() => {
+    if (mode !== 'kid' || !activeContact || !latestAnswerId) {
+      setFollowUpQuestion('');
+      setIsGeneratingFollowUp(false);
+      return;
+    }
+
+    void loadFollowUpQuestion();
+  }, [activeContact?.id, latestAnswerId, mode]);
 
   async function sendText(text: string) {
     if (!activeContact || isSending) return;
@@ -151,6 +238,23 @@ export function ChatPage() {
     } finally {
       setIsSending(false);
     }
+  }
+
+  async function loadFollowUpQuestion() {
+    if (!activeContact) return;
+    setIsGeneratingFollowUp(true);
+    setFollowUpQuestion('');
+
+    try {
+      setFollowUpQuestion(await generateFollowUpQuestionFromChat(activeContact, messages));
+    } finally {
+      setIsGeneratingFollowUp(false);
+    }
+  }
+
+  async function sendFollowUpQuestion(text: string) {
+    await sendText(text);
+    setFollowUpQuestion('');
   }
 
   async function copyMessage(text: string) {
@@ -223,7 +327,7 @@ export function ChatPage() {
     <main className={`chat-page chat-page--${mode}`}>
       <header className="chat-header">
         <Link className="chat-back" href="/find-family">Back</Link>
-        <ChatContactHeader contact={activeContact} />
+        <ChatContactHeader contact={activeContact} isOnline={isContactOnline} />
         <AuthStatus compact />
       </header>
 
@@ -260,10 +364,14 @@ export function ChatPage() {
                 />
                 <ChatComposer
                   mode={mode}
+                  followUpQuestion={followUpQuestion}
                   initialText={initialText}
+                  isGeneratingFollowUp={isGeneratingFollowUp}
                   replyTo={replyTo}
                   isSending={isSending}
                   onCancelReply={() => setReplyTo(undefined)}
+                  onRefreshFollowUp={() => void loadFollowUpQuestion()}
+                  onSendFollowUp={sendFollowUpQuestion}
                   onSendText={sendText}
                   onSendMedia={sendMedia}
                 />
@@ -280,6 +388,24 @@ export function ChatPage() {
       </section>
     </main>
   );
+}
+
+function findLatestGrandparentAnswerId(messages: DirectChatMessage[]) {
+  return [...messages].reverse().find((message) => !message.isMine && message.body.trim())?.id ?? '';
+}
+
+function readRealtimeMessageRow(payload: { new: unknown; old: unknown }) {
+  const row = payload.new || payload.old;
+  if (!row || typeof row !== 'object') return null;
+  return row as RealtimeMessageRow;
+}
+
+function isContactMessage(row: RealtimeMessageRow, contactId: string) {
+  return row.sender_id === contactId || row.receiver_id === contactId;
+}
+
+function chatRoomId(firstUserId: string, secondUserId: string) {
+  return [firstUserId, secondUserId].sort().join('-');
 }
 
 function ContactStrip({

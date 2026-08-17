@@ -5,6 +5,33 @@ import { supabase } from './supabase';
 
 export async function generateFollowUpQuestion(contacts: FamilyProfile[]) {
   const answer = await findLatestGrandparentAnswer(contacts);
+  return generateQuestionFromAnswer(answer);
+}
+
+export async function generateFollowUpQuestionFromChat(
+  contact: FamilyProfile,
+  messages: DirectChatMessage[],
+) {
+  const answerIndex = findLatestAnswerIndex(messages);
+  if (answerIndex === -1) return '';
+
+  const answer = messages[answerIndex];
+  return generateQuestionFromAnswer({
+    body: answer.body.trim(),
+    contactName: contact.displayName,
+    context: formatContext(messages.slice(Math.max(0, answerIndex - 5), answerIndex + 1)),
+    createdAt: answer.createdAt,
+  });
+}
+
+async function generateQuestionFromAnswer(
+  answer: {
+    body: string;
+    contactName: string;
+    context: string;
+    createdAt: string;
+  } | null,
+) {
   if (!answer) return '';
 
   const { data, error } = await supabase.functions.invoke('ai', {
