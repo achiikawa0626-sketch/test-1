@@ -28,9 +28,9 @@ type RequestRow = {
 };
 
 const requestSelects = [
-  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
-  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
   'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, account_mode)',
+  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode)',
+  'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
 ];
 type RequestStatusRow = Pick<RequestRow, 'id' | 'requester_id' | 'receiver_id' | 'status'>;
 

@@ -5,11 +5,8 @@ import { AuthStatus } from '../components/AuthStatus';
 import { ChatContactHeader } from '../components/ChatContactHeader';
 import { ChatComposer } from '../components/ChatComposer';
 import { ChatMessages } from '../components/ChatMessages';
-import { StreakBadge } from '../components/StreakBadge';
 import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
-import { loadChatStreak, recordChatStreak } from '../lib/chatStreak';
-import type { ChatStreak } from '../lib/chatStreak';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
 import {
   deleteDirectChatMessage,
@@ -28,7 +25,6 @@ export function ChatPage() {
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const [initialText] = useState(readInitialQuestion);
-  const [streak, setStreak] = useState<ChatStreak>({ currentStreak: 0, bestStreak: 0 });
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<
     Record<string, { duration: string; expiresAt: number }>
@@ -78,9 +74,6 @@ export function ChatPage() {
         setMessage(error instanceof Error ? error.message : 'Could not load chat contacts.');
       });
 
-    loadChatStreak()
-      .then(setStreak)
-      .catch(() => setStreak({ currentStreak: 0, bestStreak: 0 }));
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -105,7 +98,6 @@ export function ChatPage() {
 
     try {
       await sendDirectChat({ contact: activeContact, body: text });
-      await updateStreak();
       setReplyTo(undefined);
       await refreshMessages(activeContact);
     } catch (error) {
@@ -123,18 +115,9 @@ export function ChatPage() {
         media: blob,
         mediaType: mediaType as DirectChatMediaType,
       });
-      await updateStreak();
       await refreshMessages(activeContact);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not send media.');
-    }
-  }
-
-  async function updateStreak() {
-    try {
-      setStreak(await recordChatStreak());
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not update streak.');
     }
   }
 
@@ -213,7 +196,6 @@ export function ChatPage() {
       <header className="chat-header">
         <Link className="chat-back" href="/find-family">Back</Link>
         <ChatContactHeader contact={activeContact} />
-        <StreakBadge streak={streak} />
         <AuthStatus compact />
       </header>
 

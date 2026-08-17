@@ -27,13 +27,13 @@ export async function loadChatStreak() {
     .eq('user_id', userData.user.id)
     .maybeSingle();
 
-  if (error) throw friendlyStreakError(error.message);
+  if (error) return emptyStreak;
   return data ? toStreak(data as ChatStreakRow) : emptyStreak;
 }
 
 export async function recordChatStreak() {
   const { data, error } = await supabase.rpc('record_chat_streak');
-  if (error) throw friendlyStreakError(error.message);
+  if (error) return emptyStreak;
 
   const row = Array.isArray(data) ? data[0] : data;
   return row ? toStreak(row as ChatStreakRow) : emptyStreak;
@@ -45,12 +45,4 @@ function toStreak(row: ChatStreakRow): ChatStreak {
     bestStreak: row.best_streak,
     lastChatDate: row.last_chat_date ?? undefined,
   };
-}
-
-function friendlyStreakError(message: string) {
-  if (message.toLowerCase().includes('chat_streaks')) {
-    return new Error('Chat streak table is missing. Run npm run db:push -- --yes first.');
-  }
-
-  return new Error(message);
 }

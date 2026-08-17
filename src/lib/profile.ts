@@ -17,12 +17,18 @@ export type UserProfile = {
 };
 
 type ProfileRow = {
-  email: string;
+  email?: string;
   display_name: string;
-  username: string | null;
+  username?: string | null;
   account_mode: AccountMode;
-  avatar_path: string | null;
+  avatar_path?: string | null;
 };
+
+const profileSelects = [
+  'email, display_name, account_mode',
+  'email, display_name, username, account_mode',
+  'email, display_name, username, account_mode, avatar_path',
+];
 
 export function validateUsername(username: string) {
   const value = username.trim().toLowerCase();
@@ -41,20 +47,13 @@ export async function loadUserProfile(): Promise<UserProfile> {
   const user = await readUser();
   await ensureProfile();
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('email, display_name, username, account_mode, avatar_path')
-    .eq('id', user.id)
-    .single();
-
-  if (error) throw friendlyProfileError(error.message);
-
+  const data = await loadProfileRow(user.id);
   const localProfile = readSavedProfile(user.id);
   const row = await syncLocalProfile(user.id, data as ProfileRow, localProfile);
   const avatarUrl = row.avatar_path ? await createAvatarUrl(row.avatar_path) : localProfile.avatarUrl;
 
   return {
-    email: row.email,
+    email: row.email ?? user.email ?? '',
     nickname: row.display_name,
     username: row.username ?? '',
     role: row.account_mode,
@@ -72,17 +71,12 @@ export async function saveUserProfile(input: { nickname: string; username: strin
   if (usernameError) throw new Error(usernameError);
 
   const role = readAccountMode();
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      display_name: nickname,
-      username,
-      account_mode: role,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', user.id);
-
-  if (error) throw friendlyProfileError(error.message);
+  await saveProfileRow(user.id, {
+    display_name: nickname,
+    username,
+    account_mode: role,
+    updated_at: new Date().toISOString(),
+  });
 
   const saved = readSavedProfile(user.id);
   writeSavedProfile(user.id, { ...saved, nickname, username, role });
@@ -106,7 +100,9 @@ export async function uploadProfileAvatar(file: File) {
     .update({ avatar_path: avatarPath, updated_at: new Date().toISOString() })
     .eq('id', user.id);
 
-  if (profileError) throw friendlyProfileError(profileError.message);
+  if (profileError && !isMissingColumnError(profileError.message)) {
+    throw friendlyProfileError(profileError.message);
+  }
   return createAvatarUrl(avatarPath);
 }
 
@@ -135,6 +131,48 @@ async function syncLocalProfile(userId: string, row: ProfileRow, localProfile: S
     display_name: localProfile.nickname || row.display_name,
     username: localProfile.username,
   };
+}
+
+async function loadProfileRow(userId: string) {
+  for (const select of profileSelects) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(select)
+      .eq('id', userId)
+      .single();
+
+    if (!error) return data as unknown as ProfileRow;
+    if (!isMissingColumnError(error.message)) throw friendlyProfileError(error.message);
+  }
+
+  throw new Error('Could not load your profile.');
+}
+
+async function saveProfileRow(
+  userId: string,
+  row: {
+    display_name: string;
+    username: string;
+    account_mode: AccountMode;
+    updated_at: string;
+  },
+) {
+  const { error } = await supabase.from('profiles').update(row).eq('id', userId);
+  if (!error) return;
+  if (!isMissingColumnError(error.message)) throw friendlyProfileError(error.message);
+
+  const { username: _username, ...withoutUsername } = row;
+  const { error: retryError } = await supabase
+    .from('profiles')
+    .update(withoutUsername)
+    .eq('id', userId);
+
+  if (retryError) throw friendlyProfileError(retryError.message);
+}
+
+function isMissingColumnError(message: string) {
+  const lowerMessage = message.toLowerCase();
+  return lowerMessage.includes('column') || lowerMessage.includes('schema cache');
 }
 
 function friendlyProfileError(message: string) {
