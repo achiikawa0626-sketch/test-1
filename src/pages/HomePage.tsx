@@ -36,9 +36,16 @@ export function HomePage() {
             one private chat.
           </p>
           <div className="home-hero__actions">
-            <Link className="home-hero__button" href="/login">
-              Log in or create account
-            </Link>
+            {!isLoggedIn && (
+              <Link className="home-hero__button" href="/login">
+                Log in or create account
+              </Link>
+            )}
+            {isLoggedIn && (
+              <Link className="home-hero__button" href="/find-family">
+                Find family
+              </Link>
+            )}
             <Link className="home-hero__button home-hero__button--light" href="/chat">
               Open chat
             </Link>
