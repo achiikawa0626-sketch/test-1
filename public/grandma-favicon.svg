@@ -1,44 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" role="img" aria-label="Grandma app icon">
-  <rect width="150" height="150" rx="36" fill="#ff7417"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" role="img" aria-label="AskGrandma app icon">
+  <defs>
+    <linearGradient id="orange-bg" x1="18" x2="132" y1="10" y2="144" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff8a00"/>
+      <stop offset="1" stop-color="#ff7600"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="36" x2="114" y1="102" y2="139" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff2da"/>
+      <stop offset="1" stop-color="#ffe1ae"/>
+    </linearGradient>
+  </defs>
 
+  <rect width="150" height="150" rx="30" fill="url(#orange-bg)"/>
+
+  <path d="M43 138c2.5-27.8 16-44.5 32-44.5s29.5 16.7 32 44.5H43Z" fill="url(#shirt)"/>
   <path
-    d="M46 136c1.8-23.3 13.9-40.5 29-40.5s27.2 17.2 29 40.5H46Z"
-    fill="#fff7ec"
-  />
-  <path
-    d="M58 126c9.1 5.1 24.9 5.1 34 0"
-    fill="none"
-    stroke="#ded4c2"
-    stroke-width="8"
-    stroke-linecap="round"
-  />
-
-  <circle cx="75" cy="42" r="16" fill="#fff7ec"/>
-  <circle cx="43" cy="84" r="11" fill="#ffd0a6"/>
-  <circle cx="107" cy="84" r="11" fill="#ffd0a6"/>
-
-  <circle cx="75" cy="77" r="37" fill="#ffd0a6"/>
-  <path
-    d="M34 79c.8-29.5 18.3-52 41-52s40.2 22.5 41 52c-12.6-11.3-25-17.1-37.2-19.2L72.5 75 62.7 59.8C52.1 62.1 42.4 68.1 34 79Z"
-    fill="#fff7ec"
-  />
-
-  <circle cx="61" cy="84" r="14" fill="#ffd0a6" stroke="#754a37" stroke-width="8"/>
-  <circle cx="89" cy="84" r="14" fill="#ffd0a6" stroke="#754a37" stroke-width="8"/>
-  <path d="M75 84h0" stroke="#754a37" stroke-width="8" stroke-linecap="round"/>
-
-  <path
-    d="M63 101c7.6 5.8 16.4 5.8 24 0"
-    fill="none"
-    stroke="#9b5848"
-    stroke-width="8"
+    d="M62 93c-1 10.2 2.4 17.2 13 17.2s14-7 13-17.2"
+    fill="#fff"
+    stroke="#d37500"
+    stroke-width="5.5"
     stroke-linecap="round"
   />
   <path
-    d="M57 74c-1.5-2.3-4.8-3.7-8.3-2.9M93 74c1.5-2.3 4.8-3.7 8.3-2.9"
+    d="M61 103c1 12.6 10.7 15.3 14 5.8 3.3 9.5 13 6.8 14-5.8"
     fill="none"
-    stroke="#fff7ec"
-    stroke-width="6"
+    stroke="#d37500"
+    stroke-width="5.5"
+    stroke-linecap="round"
+  />
+
+  <path
+    d="M52.6 76.7c-9.2-1.4-13.9 3.2-13.9 10.7 0 8.5 6 13.4 14.5 14.1m43.6 0c8.5-.7 14.5-5.6 14.5-14.1 0-7.5-4.7-12.1-13.9-10.7"
+    fill="#fff"
+    stroke="#d37500"
+    stroke-width="5.5"
+    stroke-linecap="round"
+  />
+  <path
+    d="M99.5 67.5c0 25.1-10.8 39.3-24.5 39.3S50.5 92.6 50.5 67.5c0-15.9 10.9-28.2 24.5-28.2s24.5 12.3 24.5 28.2Z"
+    fill="#fff"
+  />
+
+  <path
+    d="M42.6 74.2c-7.3-2.3-8.5-9.5-5.9-15.6-5.6-8.9.2-21 12-21.6 4.8-10.3 16-12.5 25-9.3 7.1-14.8 28.6-12.8 34.1.6 10.1-3.5 23.4 3.5 21.3 17.4 9.6 3.2 12 16.9 3.8 23.4 4.8 7.5.8 18.3-8.7 19.5-3.9 10.5-15.4 13.7-25.7 11.5 3.1-8.1 4.4-18.9 3.8-29.9-11.8-1-20.2-6.3-25.1-15.5-7 10.4-16.2 15.4-27.4 14.8-.9 11.4.4 22.9 3.7 31.2-10.4 2.1-21.9-1.8-25.2-12.2-8.8-1.1-13-11-8.2-18.1-6.5-6.3-3.2-17.3 5.9-19.3-2.3-8.8 5.1-17.2 15.1-14.3"
+    fill="#fff"
+  />
+  <path
+    d="M50.2 68.8c10.2.7 19.2-3.5 26.4-14.2 4.9 9.8 13.5 15.4 25.6 16.1"
+    fill="none"
+    stroke="#d37500"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M50.9 68.8c-.1 6.4-1.4 12.8-3.8 18.8m55.8-18.8c.1 6.4 1.4 12.8 3.8 18.8"
+    fill="none"
+    stroke="#d37500"
+    stroke-width="5.5"
+    stroke-linecap="round"
+  />
+
+  <circle cx="65" cy="77.5" r="10.4" fill="#fff" stroke="#d37500" stroke-width="5.5"/>
+  <circle cx="85" cy="77.5" r="10.4" fill="#fff" stroke="#d37500" stroke-width="5.5"/>
+  <path d="M75.4 77.5h-.8" stroke="#d37500" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="65" cy="77.5" r="4.8" fill="#ff8a00"/>
+  <circle cx="85" cy="77.5" r="4.8" fill="#ff8a00"/>
+
+  <path
+    d="M66 90.8c5.7 4.3 12.3 4.3 18 0"
+    fill="none"
+    stroke="#ff8a00"
+    stroke-width="4.8"
+    stroke-linecap="round"
+  />
+  <path
+    d="M61.2 86.6c-2.3 2.4-3.4 5.2-3.5 8.4m31.1-8.4c2.3 2.4 3.4 5.2 3.5 8.4"
+    fill="none"
+    stroke="#ff8a00"
+    stroke-width="4.8"
     stroke-linecap="round"
   />
 </svg>

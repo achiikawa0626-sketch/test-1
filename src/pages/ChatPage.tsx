@@ -17,11 +17,22 @@ import {
 } from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
 import {
+  loadDirectChatMessageActions,
+  saveDirectChatPin,
+  toggleDirectChatFavorite,
+} from '../lib/directChatMessageActions';
+import type { DirectChatMessageActions } from '../lib/directChatMessageActions';
+import {
   loadDirectChatReactions,
   saveDirectChatReaction,
 } from '../lib/directChatReactions';
+import type { DirectChatReaction } from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
 import { generateFollowUpQuestionFromChat } from '../lib/followUpQuestion';
+import {
+  loadPrivateContactAvatar,
+  uploadPrivateContactAvatar,
+} from '../lib/privateContactAvatars';
 import { supabase } from '../lib/supabase';
 
 type RealtimeMessageRow = {
@@ -40,20 +51,19 @@ export function ChatPage() {
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const [initialText] = useState(readInitialQuestion);
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const [pinnedMessages, setPinnedMessages] = useState<
-    Record<string, { duration: string; expiresAt: number }>
-  >({});
-  const [reactions, setReactions] = useState<Record<string, string>>({});
+  const [messageActions, setMessageActions] = useState<DirectChatMessageActions>({});
+  const [reactions, setReactions] = useState<Record<string, DirectChatReaction[]>>({});
   const [replyTo, setReplyTo] = useState<ChatMessage>();
   const [myUserId, setMyUserId] = useState('');
   const [myName, setMyName] = useState('You');
+  const [contactAvatarUrl, setContactAvatarUrl] = useState<string>();
   const [isContactOnline, setIsContactOnline] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingContactAvatar, setIsUploadingContactAvatar] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isGeneratingFollowUp, setIsGeneratingFollowUp] = useState(false);
 
@@ -63,8 +73,10 @@ export function ChatPage() {
 
     try {
       const nextMessages = await loadDirectChat(contact.id);
+      const messageIds = nextMessages.map((item) => item.id);
       setMessages(nextMessages);
-      setReactions(await loadDirectChatReactions(nextMessages.map((item) => item.id)));
+      setMessageActions(await loadDirectChatMessageActions(messageIds));
+      setReactions(await loadDirectChatReactions(messageIds));
     } finally {
       if (showLoading) setIsLoadingMessages(false);
     }
@@ -117,6 +129,8 @@ export function ChatPage() {
   useEffect(() => {
     if (!isLoggedIn || !activeContact) {
       setMessages([]);
+      setMessageActions({});
+      setReactions({});
       setIsLoadingMessages(false);
       return;
     }
@@ -124,6 +138,19 @@ export function ChatPage() {
     refreshMessages(activeContact, true).catch((error: unknown) => {
       setMessage(error instanceof Error ? error.message : 'Could not load messages.');
     });
+  }, [activeContact?.id, isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !activeContact) {
+      setContactAvatarUrl(undefined);
+      return;
+    }
+
+    loadPrivateContactAvatar(activeContact.id)
+      .then(setContactAvatarUrl)
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : 'Could not load chat photo.');
+      });
   }, [activeContact?.id, isLoggedIn]);
 
   useEffect(() => {
@@ -146,6 +173,16 @@ export function ChatPage() {
           const row = readRealtimeMessageRow(payload);
           if (row && isContactMessage(row, activeContact.id)) refreshActiveChat();
         },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'direct_chat_reactions' },
+        refreshActiveChat,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'direct_chat_message_actions' },
+        refreshActiveChat,
       )
       .subscribe();
     const backupTimer = window.setInterval(refreshActiveChat, 10_000);
@@ -184,14 +221,6 @@ export function ChatPage() {
       void supabase.removeChannel(channel);
     };
   }, [activeContact?.id, isLoggedIn, myUserId]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setPinnedMessages((current) => removeExpiredPins(current));
-    }, 60_000);
-
-    return () => window.clearInterval(timer);
-  }, []);
 
   const latestAnswerId = findLatestGrandparentAnswerId(messages);
 
@@ -268,10 +297,9 @@ export function ChatPage() {
 
   async function deleteMessage(messageId: string) {
     await deleteDirectChatMessage(messageId);
-    setFavoriteIds((current) => current.filter((id) => id !== messageId));
-    setPinnedMessages((current) => {
-      const { [messageId]: _deletedPin, ...nextPins } = current;
-      return nextPins;
+    setMessageActions((current) => {
+      const { [messageId]: _deletedActions, ...nextActions } = current;
+      return nextActions;
     });
     setReactions((current) => {
       const { [messageId]: _deletedReaction, ...nextReactions } = current;
@@ -282,9 +310,9 @@ export function ChatPage() {
   }
 
   async function reactToMessage(messageId: string, reaction: string) {
-    setReactions((current) => ({ ...current, [messageId]: reaction }));
     try {
       await saveDirectChatReaction(messageId, reaction);
+      await refreshMessages(activeContact);
       setMessage('Reaction added.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not save reaction.');
@@ -292,23 +320,42 @@ export function ChatPage() {
   }
 
   async function toggleFavorite(chatMessage: ChatMessage) {
-    setFavoriteIds((current) =>
-      current.includes(chatMessage.id)
-        ? current.filter((id) => id !== chatMessage.id)
-        : [...current, chatMessage.id],
-    );
-    setMessage('Favorite updated.');
+    try {
+      const isFavorite = await toggleDirectChatFavorite(chatMessage.id);
+      await refreshMessages(activeContact);
+      setMessage(isFavorite ? 'Favorite added.' : 'Favorite removed.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not update favorite.');
+    }
   }
 
   async function pinMessage(chatMessage: ChatMessage, duration: string) {
-    setPinnedMessages((current) => ({
-      ...current,
-      [chatMessage.id]: {
+    try {
+      await saveDirectChatPin({
+        messageId: chatMessage.id,
         duration,
         expiresAt: Date.now() + pinDurationMs(duration),
-      },
-    }));
-    setMessage(`Message pinned for ${duration}.`);
+      });
+      await refreshMessages(activeContact);
+      setMessage(`Message pinned for ${duration}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not pin message.');
+    }
+  }
+
+  async function changeContactAvatar(file: File) {
+    if (!activeContact || isUploadingContactAvatar) return;
+    setIsUploadingContactAvatar(true);
+    setMessage('');
+
+    try {
+      setContactAvatarUrl(await uploadPrivateContactAvatar(activeContact.id, file));
+      setMessage('Chat photo updated for you.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not update chat photo.');
+    } finally {
+      setIsUploadingContactAvatar(false);
+    }
   }
 
   const chatMessages: ChatMessage[] = messages.map((item) => ({
@@ -331,7 +378,13 @@ export function ChatPage() {
     <main className={`chat-page chat-page--${mode}`}>
       <header className="chat-header">
         <Link className="chat-back" href="/find-family">Back</Link>
-        <ChatContactHeader contact={activeContact} isOnline={isContactOnline} />
+        <ChatContactHeader
+          contact={activeContact}
+          customAvatarUrl={contactAvatarUrl}
+          isOnline={isContactOnline}
+          isUploadingAvatar={isUploadingContactAvatar}
+          onAvatarChange={changeContactAvatar}
+        />
         <AuthStatus compact />
       </header>
 
@@ -356,8 +409,7 @@ export function ChatPage() {
               <>
                 <ChatMessages
                   messages={chatMessages}
-                  favoriteIds={favoriteIds}
-                  pinnedMessages={pinnedMessages}
+                  messageActions={messageActions}
                   reactions={reactions}
                   onCopy={copyMessage}
                   onDelete={deleteMessage}
@@ -507,12 +559,4 @@ function pinDurationMs(duration: string) {
   if (duration === '24 hours') return 24 * 60 * 60 * 1000;
   if (duration === '30 days') return 30 * 24 * 60 * 60 * 1000;
   return 7 * 24 * 60 * 60 * 1000;
-}
-
-function removeExpiredPins(
-  pins: Record<string, { duration: string; expiresAt: number }>,
-) {
-  return Object.fromEntries(
-    Object.entries(pins).filter(([, pin]) => pin.expiresAt > Date.now()),
-  );
 }

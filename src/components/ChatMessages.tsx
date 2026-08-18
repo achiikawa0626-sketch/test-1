@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import { ChatDateDivider } from './ChatDateDivider';
 import { MessageActionMenu } from './MessageActionMenu';
 import type { ChatMessage } from '../lib/chat';
+import { messageDayKey } from '../lib/chatDates';
+import type { DirectChatMessageActions } from '../lib/directChatMessageActions';
+import type { DirectChatReaction } from '../lib/directChatReactions';
 
 type ChatMessagesProps = {
   messages: ChatMessage[];
-  favoriteIds: string[];
-  pinnedMessages: Record<string, { duration: string; expiresAt: number }>;
-  reactions: Record<string, string>;
+  messageActions: DirectChatMessageActions;
+  reactions: Record<string, DirectChatReaction[]>;
   onCopy: (text: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onFavorite: (message: ChatMessage) => Promise<void>;
@@ -24,8 +27,7 @@ function formatTime(value: string) {
 
 export function ChatMessages({
   messages,
-  favoriteIds,
-  pinnedMessages,
+  messageActions,
   reactions,
   onCopy,
   onDelete,
@@ -36,8 +38,8 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const [openMenu, setOpenMenu] = useState<{ id: string; placement: 'bottom' | 'top' }>();
   const pinnedMessage = messages.find((message) => {
-    const pin = pinnedMessages[message.id];
-    return pin && pin.expiresAt > Date.now();
+    const pins = messageActions[message.id]?.pins ?? [];
+    return pins.some((pin) => pin.expiresAt > Date.now());
   });
 
   if (messages.length === 0) {
@@ -57,69 +59,80 @@ export function ChatMessages({
           <p>{pinnedMessage.body || `${pinnedMessage.mediaType ?? 'Media'} message`}</p>
         </div>
       )}
-      {messages.map((message) => {
+      {messages.map((message, index) => {
         const isOpen = openMenu?.id === message.id;
-        const pin = pinnedMessages[message.id];
-        const activePin = pin && pin.expiresAt > Date.now() ? pin : undefined;
+        const actions = messageActions[message.id];
+        const activePin = actions?.pins.find((pin) => pin.expiresAt > Date.now());
+        const hasFavorite = Boolean(actions?.favoriteUserIds.length);
+        const messageReactions = reactions[message.id] ?? [];
+        const previousMessage = messages[index - 1];
+        const startsNewDay =
+          !previousMessage || messageDayKey(previousMessage.createdAt) !== messageDayKey(message.createdAt);
 
         return (
-          <article
-            className={`chat-bubble ${message.isMine ? 'mine' : 'theirs'} ${message.senderRole}`}
-            key={message.id}
-          >
-            <button
-              className="chat-bubble__menu-trigger"
-              type="button"
-              aria-label="Open message actions"
-              onClick={(event) => {
-                if (isOpen) {
-                  setOpenMenu(undefined);
-                  return;
-                }
-
-                const rect = event.currentTarget.getBoundingClientRect();
-                const spaceBelow = window.innerHeight - rect.bottom;
-                setOpenMenu({
-                  id: message.id,
-                  placement: spaceBelow < 260 ? 'top' : 'bottom',
-                });
-              }}
+          <Fragment key={message.id}>
+            {startsNewDay && <ChatDateDivider date={message.createdAt} />}
+            <article
+              className={`chat-bubble ${message.isMine ? 'mine' : 'theirs'} ${message.senderRole}`}
             >
-              +
-            </button>
-            <p className="chat-bubble__role">
-              {message.senderName ?? (message.senderRole === 'kid' ? 'You' : 'Grandma')}
-            </p>
-            {message.body && <p className="chat-bubble__text">{message.body}</p>}
-            {message.mediaType === 'audio' && message.mediaUrl && (
-              <audio src={message.mediaUrl} controls />
-            )}
-            {message.mediaType === 'video' && message.mediaUrl && (
-              <video src={message.mediaUrl} controls />
-            )}
-            {(activePin || favoriteIds.includes(message.id)) && (
-              <p className="chat-bubble__badge">
-                {activePin ? `Pinned ${activePin.duration}` : 'Favorite'}
+              <button
+                className="chat-bubble__menu-trigger"
+                type="button"
+                aria-label="Open message actions"
+                onClick={(event) => {
+                  if (isOpen) {
+                    setOpenMenu(undefined);
+                    return;
+                  }
+
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const spaceBelow = window.innerHeight - rect.bottom;
+                  setOpenMenu({
+                    id: message.id,
+                    placement: spaceBelow < 260 ? 'top' : 'bottom',
+                  });
+                }}
+              >
+                +
+              </button>
+              <p className="chat-bubble__role">
+                {message.senderName ?? (message.senderRole === 'kid' ? 'You' : 'Grandma')}
               </p>
-            )}
-            {reactions[message.id] && (
-              <span className="chat-bubble__reaction">{reactions[message.id]}</span>
-            )}
-            {isOpen && (
-              <MessageActionMenu
-                message={message}
-                placement={openMenu.placement}
-                onClose={() => setOpenMenu(undefined)}
-                onCopy={onCopy}
-                onDelete={onDelete}
-                onFavorite={onFavorite}
-                onPin={onPin}
-                onReact={onReact}
-                onReply={onReply}
-              />
-            )}
-            <time>{formatTime(message.createdAt)}</time>
-          </article>
+              {message.body && <p className="chat-bubble__text">{message.body}</p>}
+              {message.mediaType === 'audio' && message.mediaUrl && (
+                <audio src={message.mediaUrl} controls />
+              )}
+              {message.mediaType === 'video' && message.mediaUrl && (
+                <video src={message.mediaUrl} controls />
+              )}
+              {(activePin || hasFavorite) && (
+                <p className="chat-bubble__badge">
+                  {[activePin ? `Pinned ${activePin.duration}` : '', hasFavorite ? 'Favorite' : '']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+              {messageReactions.length > 0 && (
+                <span className="chat-bubble__reaction">
+                  {messageReactions.map((item) => item.reaction).join(' ')}
+                </span>
+              )}
+              {isOpen && (
+                <MessageActionMenu
+                  message={message}
+                  placement={openMenu.placement}
+                  onClose={() => setOpenMenu(undefined)}
+                  onCopy={onCopy}
+                  onDelete={onDelete}
+                  onFavorite={onFavorite}
+                  onPin={onPin}
+                  onReact={onReact}
+                  onReply={onReply}
+                />
+              )}
+              <time>{formatTime(message.createdAt)}</time>
+            </article>
+          </Fragment>
         );
       })}
     </div>

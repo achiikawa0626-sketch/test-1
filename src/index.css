@@ -1311,6 +1311,11 @@ button.small { padding: 6px 10px; font-size: 14px; }
   cursor: default;
 }
 
+.chat-avatar:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
 .chat-avatar img {
   width: 100%;
   height: 100%;
@@ -1590,6 +1595,22 @@ button.small { padding: 6px 10px; font-size: 14px; }
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-date-divider {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 2px;
+}
+
+.chat-date-divider time {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(28, 37, 40, 0.62);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .chat-empty {
