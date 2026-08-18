@@ -9,6 +9,8 @@ import { ChatMessages } from '../components/ChatMessages';
 import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
+import { generateChatBook } from '../lib/chatBook';
+import { downloadChatBookPdf } from '../lib/chatBookPdf';
 import {
   deleteDirectChatMessage,
   loadChatContacts,
@@ -62,6 +64,7 @@ export function ChatPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isExportingBook, setIsExportingBook] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploadingContactAvatar, setIsUploadingContactAvatar] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
@@ -358,6 +361,26 @@ export function ChatPage() {
     }
   }
 
+  async function exportChatBook() {
+    if (!activeContact || isExportingBook) return;
+    setIsExportingBook(true);
+    setMessage('Writing your book...');
+
+    try {
+      const book = await generateChatBook({
+        contact: activeContact,
+        messages,
+        myName,
+      });
+      await downloadChatBookPdf(book);
+      setMessage('Book PDF downloaded.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not export this chat as a book.');
+    } finally {
+      setIsExportingBook(false);
+    }
+  }
+
   const chatMessages: ChatMessage[] = messages.map((item) => ({
     id: item.id,
     senderRole: item.isMine ? mode : activeContact?.accountMode ?? item.senderRole,
@@ -400,7 +423,9 @@ export function ChatPage() {
               <ContactStrip
                 activeContact={activeContact}
                 contacts={contacts}
+                isExportingBook={isExportingBook}
                 onContactChange={setActiveContact}
+                onExportBook={activeContact ? exportChatBook : undefined}
               />
             )}
             {message && <p className="message">{message}</p>}
@@ -467,27 +492,43 @@ function chatRoomId(firstUserId: string, secondUserId: string) {
 function ContactStrip({
   contacts,
   activeContact,
+  isExportingBook,
   onContactChange,
+  onExportBook,
 }: {
   contacts: FamilyProfile[];
   activeContact?: FamilyProfile;
+  isExportingBook: boolean;
   onContactChange: (contact: FamilyProfile) => void;
+  onExportBook?: () => Promise<void>;
 }) {
   return (
     <div className="chat-contact-strip">
-      {contacts.length === 0 ? (
-        <Link className="text-button" href="/find-family">Find family</Link>
-      ) : (
-        contacts.map((contact) => (
-          <button
-            className={activeContact?.id === contact.id ? 'chat-contact active' : 'chat-contact'}
-            key={contact.id}
-            type="button"
-            onClick={() => onContactChange(contact)}
-          >
-            {contact.displayName}
-          </button>
-        ))
+      <div className="chat-contact-strip__list">
+        {contacts.length === 0 ? (
+          <Link className="text-button" href="/find-family">Find family</Link>
+        ) : (
+          contacts.map((contact) => (
+            <button
+              className={activeContact?.id === contact.id ? 'chat-contact active' : 'chat-contact'}
+              key={contact.id}
+              type="button"
+              onClick={() => onContactChange(contact)}
+            >
+              {contact.displayName}
+            </button>
+          ))
+        )}
+      </div>
+      {onExportBook && (
+        <button
+          className="chat-book-button"
+          type="button"
+          disabled={isExportingBook}
+          onClick={() => void onExportBook()}
+        >
+          {isExportingBook ? 'Writing...' : 'Export book'}
+        </button>
       )}
     </div>
   );

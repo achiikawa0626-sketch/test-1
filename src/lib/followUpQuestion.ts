@@ -1,7 +1,11 @@
 import { loadDirectChat } from './directChat';
 import type { DirectChatMessage } from './directChat';
 import type { FamilyProfile } from './familyConnections';
+import { disableOptionalFeature, isOptionalFeatureEnabled } from './optionalFeatureFlags';
 import { supabase } from './supabase';
+import { isMissingSupabaseResource } from './supabaseErrors';
+
+const AI_FUNCTION = 'ai-function';
 
 export async function generateFollowUpQuestion(contacts: FamilyProfile[]) {
   const answer = await findLatestGrandparentAnswer(contacts);
@@ -33,6 +37,7 @@ async function generateQuestionFromAnswer(
   } | null,
 ) {
   if (!answer) return '';
+  if (!isOptionalFeatureEnabled(AI_FUNCTION)) return '';
 
   const { data, error } = await supabase.functions.invoke('ai', {
     body: {
@@ -47,7 +52,13 @@ async function generateQuestionFromAnswer(
     },
   });
 
-  if (error) return '';
+  if (error) {
+    if (isMissingSupabaseResource(error.message) || error.message.includes('Failed to fetch')) {
+      disableOptionalFeature(AI_FUNCTION);
+    }
+
+    return '';
+  }
   return typeof data?.text === 'string' ? cleanQuestion(data.text) : '';
 }
 

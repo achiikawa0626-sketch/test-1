@@ -1,8 +1,16 @@
 import { ensureProfile } from './familyConnections';
+import {
+  disableOptionalFeature,
+  enableOptionalFeature,
+  isOptionalFeatureEnabled,
+} from './optionalFeatureFlags';
 import { supabase } from './supabase';
+import { isMissingSupabaseResource } from './supabaseErrors';
 
+const TABLE = 'direct_chat_reactions';
 const localReactionKey = 'ask-grandma-direct-chat-reactions';
 let hasSyncedLocalReactions = false;
+let canUseReactionsTable = true;
 
 export type DirectChatReaction = {
   userId: string;
@@ -17,21 +25,40 @@ type DirectChatReactionRow = {
 
 export async function loadDirectChatReactions(messageIds: string[]) {
   if (messageIds.length === 0) return {};
-  await syncSavedLocalReactions(messageIds);
+  const savedLocalReactions = readSavedLocalReactions();
+  if (!canUseReactionsTable) return groupLocalReactions(messageIds, savedLocalReactions);
+  if (!isOptionalFeatureEnabled(TABLE)) {
+    return groupLocalReactions(messageIds, savedLocalReactions);
+  }
+
+  await syncSavedLocalReactions(messageIds, savedLocalReactions);
 
   const { data, error } = await supabase
-    .from('direct_chat_reactions')
+    .from(TABLE)
     .select('message_id, user_id, reaction')
     .in('message_id', messageIds)
     .order('updated_at', { ascending: true });
 
-  if (error) throw friendlyReactionError(error.message);
+  if (error) {
+    if (isMissingSupabaseResource(error.message)) {
+      canUseReactionsTable = false;
+      disableOptionalFeature(TABLE);
+      return groupLocalReactions(messageIds, savedLocalReactions);
+    }
+
+    throw friendlyReactionError(error.message);
+  }
   return groupReactions((data ?? []) as DirectChatReactionRow[]);
 }
 
 export async function saveDirectChatReaction(messageId: string, reaction: string) {
+  if (!canUseReactionsTable) {
+    saveLocalReaction(messageId, reaction);
+    throw missingReactionsError();
+  }
+
   const userId = await ensureProfile();
-  const { error } = await supabase.from('direct_chat_reactions').upsert(
+  const { error } = await supabase.from(TABLE).upsert(
     {
       message_id: messageId,
       user_id: userId,
@@ -41,7 +68,17 @@ export async function saveDirectChatReaction(messageId: string, reaction: string
     { onConflict: 'message_id,user_id' },
   );
 
-  if (error) throw friendlyReactionError(error.message);
+  if (error) {
+    if (isMissingSupabaseResource(error.message)) {
+      canUseReactionsTable = false;
+      disableOptionalFeature(TABLE);
+      saveLocalReaction(messageId, reaction);
+    }
+
+    throw friendlyReactionError(error.message);
+  }
+
+  enableOptionalFeature(TABLE);
 }
 
 function groupReactions(rows: DirectChatReactionRow[]) {
@@ -54,11 +91,13 @@ function groupReactions(rows: DirectChatReactionRow[]) {
   }, {});
 }
 
-async function syncSavedLocalReactions(messageIds: string[]) {
+async function syncSavedLocalReactions(
+  messageIds: string[],
+  savedReactions: Record<string, string>,
+) {
   if (hasSyncedLocalReactions) return;
   hasSyncedLocalReactions = true;
 
-  const savedReactions = readSavedLocalReactions();
   const rows = messageIds.flatMap((messageId) => {
     const reaction = savedReactions[messageId];
     if (!reaction) return [];
@@ -72,7 +111,7 @@ async function syncSavedLocalReactions(messageIds: string[]) {
   if (rows.length === 0) return;
 
   const userId = await ensureProfile();
-  const { error } = await supabase.from('direct_chat_reactions').upsert(
+  const { error } = await supabase.from(TABLE).upsert(
     rows.map((row) => ({
       ...row,
       user_id: userId,
@@ -81,7 +120,16 @@ async function syncSavedLocalReactions(messageIds: string[]) {
     { onConflict: 'message_id,user_id' },
   );
 
-  if (!error) localStorage.removeItem(localReactionKey);
+  if (!error) {
+    enableOptionalFeature(TABLE);
+    localStorage.removeItem(localReactionKey);
+    return;
+  }
+
+  if (isMissingSupabaseResource(error.message)) {
+    canUseReactionsTable = false;
+    disableOptionalFeature(TABLE);
+  }
 }
 
 function readSavedLocalReactions() {
@@ -92,10 +140,30 @@ function readSavedLocalReactions() {
   }
 }
 
+function saveLocalReaction(messageId: string, reaction: string) {
+  localStorage.setItem(
+    localReactionKey,
+    JSON.stringify({
+      ...readSavedLocalReactions(),
+      [messageId]: reaction,
+    }),
+  );
+}
+
+function groupLocalReactions(messageIds: string[], savedReactions: Record<string, string>) {
+  return messageIds.reduce<Record<string, DirectChatReaction[]>>((reactions, messageId) => {
+    const reaction = savedReactions[messageId];
+    if (reaction) reactions[messageId] = [{ userId: 'local', reaction }];
+    return reactions;
+  }, {});
+}
+
 function friendlyReactionError(message: string) {
-  if (message.toLowerCase().includes('could not find the table')) {
-    return new Error('Reaction table is missing. Run npm run db:push -- --yes first.');
-  }
+  if (isMissingSupabaseResource(message)) return missingReactionsError();
 
   return new Error(message);
+}
+
+function missingReactionsError() {
+  return new Error('Reactions need the new database migration first.');
 }

@@ -1,5 +1,14 @@
 import { ensureProfile } from './familyConnections';
+import {
+  disableOptionalFeature,
+  enableOptionalFeature,
+  isOptionalFeatureEnabled,
+} from './optionalFeatureFlags';
 import { supabase } from './supabase';
+import { isMissingSupabaseResource } from './supabaseErrors';
+
+const TABLE = 'direct_chat_message_actions';
+let canUseMessageActions = true;
 
 export type DirectChatMessagePin = {
   userId: string;
@@ -24,40 +33,51 @@ type DirectChatMessageActionRow = {
 };
 
 export async function loadDirectChatMessageActions(messageIds: string[]) {
-  if (messageIds.length === 0) return {};
+  if (messageIds.length === 0 || !canUseMessageActions) return {};
+  if (!isOptionalFeatureEnabled(TABLE)) return {};
 
   const { data, error } = await supabase
-    .from('direct_chat_message_actions')
+    .from(TABLE)
     .select('message_id, user_id, action_type, pin_duration, pinned_until')
     .in('message_id', messageIds);
 
-  if (error) throw friendlyActionError(error.message);
+  if (error) {
+    if (isMissingSupabaseResource(error.message)) {
+      canUseMessageActions = false;
+      return {};
+    }
+
+    throw friendlyActionError(error.message);
+  }
   return groupActions((data ?? []) as DirectChatMessageActionRow[]);
 }
 
 export async function toggleDirectChatFavorite(messageId: string) {
+  if (!canUseMessageActions) throw missingActionsError();
   const userId = await ensureProfile();
   const { data, error } = await supabase
-    .from('direct_chat_message_actions')
+    .from(TABLE)
     .select('id')
     .eq('message_id', messageId)
     .eq('user_id', userId)
     .eq('action_type', 'favorite')
     .maybeSingle();
 
-  if (error) throw friendlyActionError(error.message);
+  if (error) throw handleActionWriteError(error.message);
+  enableOptionalFeature(TABLE);
   if (data?.id) {
     await deleteFavorite(data.id);
     return false;
   }
 
-  const { error: insertError } = await supabase.from('direct_chat_message_actions').insert({
+  const { error: insertError } = await supabase.from(TABLE).insert({
     message_id: messageId,
     user_id: userId,
     action_type: 'favorite',
   });
 
-  if (insertError) throw friendlyActionError(insertError.message);
+  if (insertError) throw handleActionWriteError(insertError.message);
+  enableOptionalFeature(TABLE);
   return true;
 }
 
@@ -66,8 +86,9 @@ export async function saveDirectChatPin(input: {
   duration: string;
   expiresAt: number;
 }) {
+  if (!canUseMessageActions) throw missingActionsError();
   const userId = await ensureProfile();
-  const { error } = await supabase.from('direct_chat_message_actions').upsert(
+  const { error } = await supabase.from(TABLE).upsert(
     {
       message_id: input.messageId,
       user_id: userId,
@@ -79,11 +100,12 @@ export async function saveDirectChatPin(input: {
     { onConflict: 'message_id,user_id,action_type' },
   );
 
-  if (error) throw friendlyActionError(error.message);
+  if (error) throw handleActionWriteError(error.message);
+  enableOptionalFeature(TABLE);
 }
 
 async function deleteFavorite(id: string) {
-  const { error } = await supabase.from('direct_chat_message_actions').delete().eq('id', id);
+  const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) throw friendlyActionError(error.message);
 }
 
@@ -112,9 +134,18 @@ function groupActions(rows: DirectChatMessageActionRow[]) {
 }
 
 function friendlyActionError(message: string) {
-  if (message.toLowerCase().includes('could not find the table')) {
-    return new Error('Message actions table is missing. Run npm run db:push -- --yes first.');
-  }
-
+  if (isMissingSupabaseResource(message)) return missingActionsError();
   return new Error(message);
+}
+
+function handleActionWriteError(message: string) {
+  if (isMissingSupabaseResource(message)) {
+    canUseMessageActions = false;
+    disableOptionalFeature(TABLE);
+  }
+  return friendlyActionError(message);
+}
+
+function missingActionsError() {
+  return new Error('Message actions need the new database migration first.');
 }
