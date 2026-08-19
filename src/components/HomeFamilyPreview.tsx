@@ -1,16 +1,19 @@
 import { Link } from 'wouter';
 import type { FamilyRequest } from '../lib/familyConnections';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type HomeFamilyPreviewProps = {
   isLoggedIn: boolean;
   message: string;
   requests: FamilyRequest[];
+  text: HomeTranslation;
 };
 
 export function HomeFamilyPreview({
   isLoggedIn,
   message,
   requests,
+  text,
 }: HomeFamilyPreviewProps) {
   const accepted = requests.filter((request) => request.status === 'accepted');
   const incoming = requests.filter(
@@ -23,14 +26,14 @@ export function HomeFamilyPreview({
   if (!isLoggedIn) {
     return (
       <section className="generation-card" aria-label="Family preview">
-        <CardHeader label="Start" title="Your family stories live here." />
+        <CardHeader label={text.startLabel} title={text.signedOutTitle} />
         <div className="generation-card__answers">
           <ActionRow
             icon="+"
-            title="Create your account"
-            text="Log in first, then connect with real family accounts and start a private chat."
+            title={text.loginButton}
+            text={text.signedOutText}
             href="/login"
-            label="Log in"
+            label={text.signedOutButton}
           />
         </div>
       </section>
@@ -40,48 +43,52 @@ export function HomeFamilyPreview({
   return (
     <section className="generation-card" aria-label="Family preview">
       <CardHeader
-        label="Your Family"
-        title={accepted.length > 0 ? 'People you can chat with now.' : 'Build your family circle.'}
+        label={text.familyPreviewLabel}
+        title={accepted.length > 0 ? text.familyReadyTitle : text.familyEmptyTitle}
       />
       <div className="generation-card__answers">
         {message && <p className="generation-message">{message}</p>}
         {accepted.map((request) => (
-          <FamilyRow request={request} key={request.id} />
+          <FamilyRow labels={text} request={request} key={request.id} />
         ))}
         {incoming.length > 0 && (
           <ActionRow
             icon="!"
-            title={`${incoming.length} request${incoming.length === 1 ? '' : 's'} waiting`}
-            text="Someone wants to connect with you. Review the request and accept it to start chatting."
+            title={
+              incoming.length === 1
+                ? text.incomingRequestSingle
+                : text.incomingRequestMany(incoming.length)
+            }
+            text={text.incomingRequestText}
             href="/find-family"
-            label="Review"
+            label={text.reviewButton}
           />
         )}
         {outgoing.length > 0 && accepted.length === 0 && (
           <ActionRow
             icon="..."
-            title="Waiting for family"
-            text="Your request was sent. Once they accept, their profile will show up here."
+            title={text.waitingTitle}
+            text={text.waitingText}
             href="/find-family"
-            label="Check status"
+            label={text.checkStatusButton}
           />
         )}
         {accepted.length === 0 && incoming.length === 0 && outgoing.length === 0 && (
           <ActionRow
             icon="+"
-            title="Add your first family member"
-            text="Search by email, send a request, and this card becomes your real family hub."
+            title={text.addFamilyTitle}
+            text={text.addFamilyText}
             href="/find-family"
-            label="Find family"
+            label={text.findFamilyButton}
           />
         )}
         {accepted.length > 0 && (
           <ActionRow
             icon=">"
-            title="Open your family chat"
-            text="Send messages, voice notes, videos, and questions with the people connected above."
+            title={text.openFamilyChatTitle}
+            text={text.openFamilyChatText}
             href="/chat"
-            label="Open chat"
+            label={text.chatButton}
           />
         )}
       </div>
@@ -98,9 +105,10 @@ function CardHeader({ label, title }: { label: string; title: string }) {
   );
 }
 
-function FamilyRow({ request }: { request: FamilyRequest }) {
+function FamilyRow({ labels, request }: { labels: HomeTranslation; request: FamilyRequest }) {
   const name = request.profile.displayName;
-  const role = request.profile.accountMode === 'kid' ? 'Child or parent' : 'Grandparent';
+  const role =
+    request.profile.accountMode === 'kid' ? labels.authKidParent : labels.authGrandparent;
 
   return (
     <article className="generation-answer">

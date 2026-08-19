@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { AuthStatus } from '../components/AuthStatus';
 import { HomeFamilyPreview } from '../components/HomeFamilyPreview';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useAppLanguage } from '../lib/appLanguage';
 import { loadFamilyRequests } from '../lib/familyConnections';
 import type { FamilyRequest } from '../lib/familyConnections';
-import { homeLanguages, homeTranslations } from '../lib/homeTranslations';
-import type { HomeLanguage } from '../lib/homeTranslations';
+import { homeTranslations } from '../lib/homeTranslations';
 import { supabase } from '../lib/supabase';
 
 export function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
   const [message, setMessage] = useState('');
-  const [language, setLanguage] = useState<HomeLanguage>('en');
+  const [language, setLanguage] = useAppLanguage();
   const text = homeTranslations[language];
 
   useEffect(() => {
@@ -33,19 +34,8 @@ export function HomePage() {
       <div className="home-shell">
         <section className="home-hero">
           <p className="home-hero__label">AskGrandma</p>
-          <div className="home-language-switcher" aria-label="Home screen language">
-            {homeLanguages.map((code) => (
-              <button
-                className={language === code ? 'active' : ''}
-                key={code}
-                type="button"
-                onClick={() => setLanguage(code)}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <AuthStatus />
+          <LanguageSwitcher language={language} onChange={setLanguage} />
+          <AuthStatus labels={text} />
           <h1>{text.heroTitle}</h1>
           <p className="home-hero__text">{text.heroText}</p>
           <div className="home-hero__actions">
@@ -65,7 +55,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <HomeFamilyPreview isLoggedIn={isLoggedIn} message={message} requests={requests} />
+        <HomeFamilyPreview isLoggedIn={isLoggedIn} message={message} requests={requests} text={text} />
       </div>
     </main>
   );

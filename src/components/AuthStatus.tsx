@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { readAccountMode } from '../lib/accountMode';
+import { homeTranslations } from '../lib/homeTranslations';
+import type { HomeTranslation } from '../lib/homeTranslations';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 type AuthStatusProps = {
   compact?: boolean;
+  labels?: Pick<
+    HomeTranslation,
+    'authNotLoggedIn' | 'authKidParent' | 'authGrandparent' | 'profileLink' | 'signedOutButton'
+  >;
 };
 
-export function AuthStatus({ compact = false }: AuthStatusProps) {
+export function AuthStatus({ compact = false, labels = homeTranslations.en }: AuthStatusProps) {
   const [email, setEmail] = useState<string>();
 
   useEffect(() => {
@@ -29,8 +35,8 @@ export function AuthStatus({ compact = false }: AuthStatusProps) {
   if (!email) {
     return (
       <div className={compact ? 'auth-status compact' : 'auth-status'}>
-        <span>Not logged in</span>
-        <Link href="/login">Log in</Link>
+        <span>{labels.authNotLoggedIn}</span>
+        <Link href="/login">{labels.signedOutButton}</Link>
       </div>
     );
   }
@@ -38,9 +44,9 @@ export function AuthStatus({ compact = false }: AuthStatusProps) {
   return (
     <div className={compact ? 'auth-status compact' : 'auth-status'}>
       <span>
-        {readAccountMode() === 'kid' ? 'Kid/parent' : 'Grandparent'}: {email}
+        {readAccountMode() === 'kid' ? labels.authKidParent : labels.authGrandparent}: {email}
       </span>
-      <Link href="/profile">Profile</Link>
+      <Link href="/profile">{labels.profileLink}</Link>
     </div>
   );
 }

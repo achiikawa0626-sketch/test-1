@@ -4,7 +4,9 @@ import { AuthStatus } from '../components/AuthStatus';
 import { ConnectedFamilyPanel } from '../components/ConnectedFamilyPanel';
 import { FamilyRequestPanel } from '../components/FamilyRequestPanel';
 import { FamilySearchCard } from '../components/FamilySearchCard';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { readAccountMode } from '../lib/accountMode';
+import { useAppLanguage } from '../lib/appLanguage';
 import {
   cancelFamilyRequest,
   loadFamilyRequests,
@@ -13,9 +15,12 @@ import {
   sendFamilyRequest,
 } from '../lib/familyConnections';
 import type { FamilyProfile, FamilyRequest } from '../lib/familyConnections';
+import { homeTranslations } from '../lib/homeTranslations';
 
 export function FindFamilyPage() {
   const mode = readAccountMode();
+  const [language, setLanguage] = useAppLanguage();
+  const text = homeTranslations[language];
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FamilyProfile[]>([]);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
@@ -37,9 +42,9 @@ export function FindFamilyPage() {
 
   useEffect(() => {
     refreshRequests().catch((error: unknown) => {
-      setMessage(error instanceof Error ? error.message : 'Could not load family requests.');
+      setMessage(error instanceof Error ? error.message : text.couldNotLoadRequests);
     });
-  }, []);
+  }, [text.couldNotLoadRequests]);
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
@@ -49,11 +54,11 @@ export function FindFamilyPage() {
       const foundProfiles = await searchFamilyProfiles(query);
       setResults(foundProfiles);
       if (foundProfiles.length === 0) {
-        setMessage('No account found. Check the email or username and try again.');
+        setMessage(text.noAccountFound);
       }
     } catch (error) {
       setResults([]);
-      setMessage(error instanceof Error ? error.message : 'Could not search family.');
+      setMessage(error instanceof Error ? error.message : text.couldNotSearchFamily);
     }
   }
 
@@ -63,13 +68,13 @@ export function FindFamilyPage() {
 
     try {
       const result = await sendFamilyRequest(profileId);
-      setMessage(result === 'accepted' ? 'Family request accepted.' : 'Family request sent.');
+      setMessage(result === 'accepted' ? text.familyRequestAccepted : text.familyRequestSent);
       await refreshRequests();
       if (result === 'sent') {
-        setMessage('Request sent. It will appear under Sent requests until they accept.');
+        setMessage(text.requestSentDetails);
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not send request.');
+      setMessage(error instanceof Error ? error.message : text.couldNotSendRequest);
     } finally {
       setBusyId('');
     }
@@ -82,9 +87,11 @@ export function FindFamilyPage() {
     try {
       await respondToFamilyRequest(requestId, status);
       await refreshRequests();
-      setMessage(status === 'accepted' ? 'Family request accepted.' : 'Family request declined.');
+      setMessage(
+        status === 'accepted' ? text.familyRequestAccepted : text.familyRequestDeclined,
+      );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not update request.');
+      setMessage(error instanceof Error ? error.message : text.couldNotUpdateRequest);
     } finally {
       setBusyId('');
     }
@@ -97,9 +104,9 @@ export function FindFamilyPage() {
     try {
       await cancelFamilyRequest(requestId);
       await refreshRequests();
-      setMessage('Request canceled.');
+      setMessage(text.requestCanceled);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not cancel request.');
+      setMessage(error instanceof Error ? error.message : text.couldNotCancelRequest);
     } finally {
       setBusyId('');
     }
@@ -109,9 +116,10 @@ export function FindFamilyPage() {
     <main className="wide-container">
       <header className="page-header">
         <Link href="/">AskGrandma</Link>
-        <h1>Family requests</h1>
-        <p>Find someone by email or username, send a request, and connect after they accept.</p>
-        <AuthStatus />
+        <LanguageSwitcher language={language} onChange={setLanguage} />
+        <h1>{text.findFamilyTitle}</h1>
+        <p>{text.findFamilyIntro}</p>
+        <AuthStatus labels={text} />
       </header>
 
       <section className="family-connect">
@@ -122,6 +130,7 @@ export function FindFamilyPage() {
           requests={requests}
           message={message}
           sendingId={busyId}
+          text={text}
           onQueryChange={setQuery}
           onSearch={search}
           onRequest={(profileId) => void requestFamily(profileId)}
@@ -129,24 +138,27 @@ export function FindFamilyPage() {
 
         <div className="family-panels">
           <FamilyRequestPanel
-            title="Requests to accept"
-            empty={isLoadingFamily ? 'Loading requests...' : 'When someone asks to connect, you can accept or decline here.'}
+            title={text.requestsToAcceptTitle}
+            empty={isLoadingFamily ? text.loadingRequests : text.requestsToAcceptEmpty}
             requests={incoming}
             busyId={busyId}
+            text={text}
             onRespond={(requestId, status) => void respond(requestId, status)}
             onCancel={(requestId) => void cancel(requestId)}
           />
           <FamilyRequestPanel
-            title="Sent requests"
-            empty={isLoadingFamily ? 'Loading sent requests...' : 'Requests you send will stay here until the other person answers.'}
+            title={text.sentRequestsTitle}
+            empty={isLoadingFamily ? text.loadingSentRequests : text.sentRequestsEmpty}
             requests={outgoing}
             busyId={busyId}
+            text={text}
             onRespond={(requestId, status) => void respond(requestId, status)}
             onCancel={(requestId) => void cancel(requestId)}
           />
           <ConnectedFamilyPanel
             mode={mode}
             requests={accepted}
+            text={text}
           />
         </div>
       </section>

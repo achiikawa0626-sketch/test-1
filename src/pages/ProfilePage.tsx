@@ -9,7 +9,8 @@ import {
 import { redirectTo } from '../lib/routes';
 
 export function ProfilePage() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
   const [username, setUsername] = useState('');
@@ -80,11 +81,39 @@ export function ProfilePage() {
         <button
           className="profile-avatar-button"
           type="button"
-          onClick={() => inputRef.current?.click()}
+          aria-label="Choose profile photo"
+          onClick={() => fileInputRef.current?.click()}
         >
           {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{email[0]?.toUpperCase() ?? '?'}</span>}
         </button>
-        <input ref={inputRef} type="file" accept="image/*" onChange={uploadAvatar} hidden />
+        <div className="profile-photo-actions">
+          <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()}>
+            Choose photo
+          </button>
+          <button
+            className="ghost"
+            type="button"
+            disabled={busy}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            Take photo
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={uploadAvatar}
+          hidden
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={uploadAvatar}
+          hidden
+        />
 
         <div className="profile-locked-field">
           <span>Role</span>

@@ -694,6 +694,21 @@ button.small { padding: 6px 10px; font-size: 14px; }
   object-fit: cover;
 }
 
+.profile-photo-actions {
+  justify-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.profile-photo-actions button {
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
 .request-actions {
   display: flex;
   flex-wrap: wrap;

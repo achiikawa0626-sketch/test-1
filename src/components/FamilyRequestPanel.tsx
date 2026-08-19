@@ -1,11 +1,13 @@
 import { FamilyProfileSummary } from './FamilyProfileSummary';
 import type { FamilyRequest } from '../lib/familyConnections';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type FamilyRequestPanelProps = {
   title: string;
   empty: string;
   requests: FamilyRequest[];
   busyId: string;
+  text: HomeTranslation;
   onRespond: (requestId: string, status: 'accepted' | 'declined') => void;
   onCancel: (requestId: string) => void;
 };
@@ -15,6 +17,7 @@ export function FamilyRequestPanel({
   empty,
   requests,
   busyId,
+  text,
   onRespond,
   onCancel,
 }: FamilyRequestPanelProps) {
@@ -30,6 +33,7 @@ export function FamilyRequestPanel({
             <RequestActions
               request={request}
               isBusy={busyId === request.id}
+              text={text}
               onRespond={onRespond}
               onCancel={onCancel}
             />
@@ -43,16 +47,17 @@ export function FamilyRequestPanel({
 type RequestActionsProps = {
   request: FamilyRequest;
   isBusy: boolean;
+  text: HomeTranslation;
   onRespond: (requestId: string, status: 'accepted' | 'declined') => void;
   onCancel: (requestId: string) => void;
 };
 
-function RequestActions({ request, isBusy, onRespond, onCancel }: RequestActionsProps) {
+function RequestActions({ request, isBusy, text, onRespond, onCancel }: RequestActionsProps) {
   if (request.direction === 'incoming') {
     return (
       <div className="request-actions">
         <button type="button" disabled={isBusy} onClick={() => onRespond(request.id, 'accepted')}>
-          Accept
+          {text.acceptButton}
         </button>
         <button
           className="ghost"
@@ -60,7 +65,7 @@ function RequestActions({ request, isBusy, onRespond, onCancel }: RequestActions
           disabled={isBusy}
           onClick={() => onRespond(request.id, 'declined')}
         >
-          Decline
+          {text.declineButton}
         </button>
       </div>
     );
@@ -68,9 +73,9 @@ function RequestActions({ request, isBusy, onRespond, onCancel }: RequestActions
 
   return (
     <div className="request-actions">
-      <span className="request-chip">Waiting</span>
+      <span className="request-chip">{text.waitingChip}</span>
       <button className="ghost" type="button" disabled={isBusy} onClick={() => onCancel(request.id)}>
-        Cancel
+        {text.cancelButton}
       </button>
     </div>
   );
