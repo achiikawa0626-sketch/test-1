@@ -369,7 +369,6 @@ export function ChatPage() {
   async function exportChatBook() {
     if (!activeContact || isExportingBook) return;
     setIsExportingBook(true);
-      setMessage(text.writingBook);
 
     try {
       const book = await generateChatBook({
@@ -378,7 +377,6 @@ export function ChatPage() {
         myName,
       });
       await downloadChatBookPdf(book);
-      setMessage(text.bookDownloaded);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not export this chat as a book.');
     } finally {

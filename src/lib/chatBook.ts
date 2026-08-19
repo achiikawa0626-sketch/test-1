@@ -1,5 +1,7 @@
 import type { DirectChatMessage } from './directChat';
 import type { FamilyProfile } from './familyConnections';
+import { parseAiBookDraft } from './chatBookAiDraft';
+import { supabase } from './supabase';
 
 type ChatBookInput = {
   contact: FamilyProfile;
@@ -9,11 +11,8 @@ type ChatBookInput = {
 
 export type ChatBookChapter = {
   title: string;
-  summary: string;
-  participants: string[];
-  places: string[];
-  keyMoments: string[];
-  transcript: string[];
+  prose: string[];
+  sourceNotes: string[];
   mediaReferences: string[];
 };
 
@@ -24,123 +23,123 @@ export type ChatBook = {
   chapters: ChatBookChapter[];
 };
 
-export function generateChatBook(input: ChatBookInput): ChatBook {
+export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> {
   const bookMessages = input.messages.filter((message) => message.body.trim() || message.mediaUrl);
   if (bookMessages.length === 0) {
     throw new Error('There are no chat messages or media references to turn into a book yet.');
   }
 
-  const chapters = buildChapters({ ...input, messages: bookMessages });
-  return {
+  const base = {
     title: `${input.contact.displayName} and ${input.myName}`,
     authorLine: `A family storybook for ${input.myName} and ${input.contact.displayName}`,
-    overview: buildOverview(input, chapters),
-    chapters,
   };
-}
+  const source = buildSource(input, bookMessages);
 
-function buildChapters(input: ChatBookInput) {
-  return Object.entries(groupMessagesByDay(input.messages)).map(([day, messages], index) => {
-    const participants = [input.myName, input.contact.displayName];
-    const transcript = messages.map((message) => formatTranscriptLine(input, message));
-    const mediaReferences = messages.flatMap((message) => formatMediaReference(input, message));
-    const keyMoments = extractKeyMoments(messages);
-    const places = extractPlaces(messages);
-
+  try {
+    const draft = await writeAiStorybook(base.title, source);
     return {
-      title: `Chapter ${index + 1}: ${day}`,
-      summary: buildChapterSummary(messages, participants, places, mediaReferences),
-      participants,
-      places,
-      keyMoments,
-      transcript,
-      mediaReferences,
+      ...base,
+      overview: draft.overview,
+      chapters: draft.chapters.map((chapter) => ({
+        ...chapter,
+        mediaReferences: source.mediaReferences,
+      })),
     };
-  });
+  } catch {
+    return {
+      ...base,
+      overview: buildFallbackOverview(input, source),
+      chapters: buildFallbackChapters(source),
+    };
+  }
 }
 
-function buildOverview(input: ChatBookInput, chapters: ChatBookChapter[]) {
-  const mediaCount = chapters.reduce((total, chapter) => total + chapter.mediaReferences.length, 0);
+async function writeAiStorybook(title: string, source: StorySource) {
+  const { data, error } = await supabase.functions.invoke('ai', {
+    body: {
+      system: [
+        'You turn family chat history into a warm storybook.',
+        'Write engaging narrative prose, not a transcript or bullet-point summary.',
+        'The grandmother is the main storyteller and the child asks follow-up questions.',
+        'Shape the story around what grandma remembers, what happened, and why it mattered.',
+        'Use only facts from the supplied chat text and media transcripts.',
+        'If an audio or video item has no transcript, mention only that a recording was saved.',
+        'Do not invent events, places, ages, names, or feelings.',
+        'Return valid JSON only.',
+      ].join(' '),
+      prompt: [
+        `Book title: ${title}`,
+        'Write 2-4 short chapters from this source material, like a gentle family memoir.',
+        'JSON shape: {"overview":"...","chapters":[{"title":"...","prose":["paragraph"],"sourceNotes":["short evidence note"]}]}',
+        '',
+        'Source material:',
+        source.lines.join('\n'),
+      ].join('\n'),
+    },
+  });
+
+  if (error) throw error;
+  return parseAiBookDraft(String(data?.text ?? ''));
+}
+
+type StorySource = {
+  lines: string[];
+  mediaReferences: string[];
+};
+
+function buildSource(input: ChatBookInput, messages: DirectChatMessage[]): StorySource {
+  const mediaReferences: string[] = [];
+  const lines = messages.map((message) => {
+    const speaker = message.isMine ? input.myName : input.contact.displayName;
+    const sentAt = new Intl.DateTimeFormat('en', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(message.createdAt));
+    const body = message.body.trim();
+
+    if (message.mediaType && message.mediaUrl) {
+      const mediaLabel = message.mediaType === 'audio' ? 'audio/soundtrack' : 'video';
+      mediaReferences.push(`${mediaLabel} from ${speaker}: ${message.mediaUrl}`);
+      return body
+        ? `${sentAt} - ${speaker} shared a ${mediaLabel}. Transcript: ${cleanTranscript(body)}`
+        : `${sentAt} - ${speaker} shared a ${mediaLabel}, but no transcript was saved.`;
+    }
+
+    return `${sentAt} - ${speaker}: ${body}`;
+  });
+
+  return { lines, mediaReferences };
+}
+
+function cleanTranscript(value: string) {
+  return value.replace(/^Story transcript:\s*/i, '').trim();
+}
+
+function buildFallbackOverview(input: ChatBookInput, source: StorySource) {
   return [
-    'This storybook was compiled from real AskGrandma chat history.',
-    `It includes ${chapters.length} chapter${chapters.length === 1 ? '' : 's'} between ${input.myName} and ${input.contact.displayName}.`,
-    mediaCount > 0
-      ? `It also preserves ${mediaCount} audio or video reference${mediaCount === 1 ? '' : 's'} from the chat.`
-      : 'No audio or video references were found in this export.',
+    `${input.myName} and ${input.contact.displayName} saved a family conversation as a storybook draft.`,
+    'The AI story writer was not available, so this version uses a simple narrative from the saved chat text.',
+    source.mediaReferences.length > 0
+      ? 'Audio and video references are listed after the chapters.'
+      : 'No audio or video references were found.',
   ].join(' ');
 }
 
-function buildChapterSummary(
-  messages: DirectChatMessage[],
-  participants: string[],
-  places: string[],
-  mediaReferences: string[],
-) {
-  const textCount = messages.filter((message) => message.body.trim()).length;
-  const placeLine = places.length > 0 ? ` Places mentioned: ${places.join(', ')}.` : '';
-  const mediaLine =
-    mediaReferences.length > 0 ? ` Media references: ${mediaReferences.length}.` : '';
+function buildFallbackChapters(source: StorySource): ChatBookChapter[] {
+  const prose = source.lines
+    .filter((line) => !line.includes('no transcript was saved'))
+    .slice(0, 8)
+    .map((line) => line.replace(/^.*? - /, ''));
 
-  return `${participants.join(' and ')} shared ${textCount} written message${textCount === 1 ? '' : 's'} in this chapter.${placeLine}${mediaLine}`;
-}
-
-function formatTranscriptLine(input: ChatBookInput, message: DirectChatMessage) {
-  const speaker = message.isMine ? input.myName : input.contact.displayName;
-  const sentAt = new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(message.createdAt));
-  const body = message.body.trim() || `[${message.mediaType ?? 'media'} message]`;
-  return `${sentAt} - ${speaker}: ${body}`;
-}
-
-function formatMediaReference(input: ChatBookInput, message: DirectChatMessage) {
-  if (!message.mediaType || !message.mediaUrl) return [];
-
-  const speaker = message.isMine ? input.myName : input.contact.displayName;
-  const label = message.mediaType === 'audio' ? 'Audio/soundtrack' : 'Video';
-  return [`${label} from ${speaker}: ${message.mediaUrl}`];
-}
-
-function extractKeyMoments(messages: DirectChatMessage[]) {
-  const moments = messages
-    .map((message) => message.body.trim())
-    .filter(Boolean)
-    .filter((body) => !body.endsWith('?'))
-    .map((body) => firstSentence(body))
-    .filter((body) => body.length > 12);
-
-  return unique(moments).slice(0, 5);
-}
-
-function extractPlaces(messages: DirectChatMessage[]) {
-  const placeMatches = messages.flatMap((message) => {
-    const body = message.body.trim();
-    return [...body.matchAll(/\b(?:in|at|from|near|to)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})/g)]
-      .map((match) => match[1])
-      .filter(Boolean);
-  });
-
-  return unique(placeMatches).slice(0, 6);
-}
-
-function firstSentence(value: string) {
-  return value.split(/[.!?]/)[0].trim();
-}
-
-function unique(values: string[]) {
-  return [...new Set(values)];
-}
-
-function groupMessagesByDay(messages: DirectChatMessage[]) {
-  return messages.reduce<Record<string, DirectChatMessage[]>>((groups, message) => {
-    const day = new Intl.DateTimeFormat('en', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date(message.createdAt));
-
-    groups[day] = [...(groups[day] ?? []), message];
-    return groups;
-  }, {});
+  return [
+    {
+      title: 'Chapter 1: A Saved Conversation',
+      prose:
+        prose.length > 0
+          ? prose
+          : ['A family recording was saved, but there was not enough transcript text to write a full chapter.'],
+      sourceNotes: ['Generated from saved chat text and available media transcripts.'],
+      mediaReferences: source.mediaReferences,
+    },
+  ];
 }

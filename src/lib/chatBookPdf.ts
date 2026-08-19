@@ -26,12 +26,9 @@ export async function downloadChatBookPdf(book: ChatBook) {
 }
 
 function drawChapter(pdf: PdfDocument, page: PageBox, y: number, chapter: ChatBookChapter) {
-  let nextY = drawSection(pdf, page, y, chapter.title, [chapter.summary]);
-  nextY = drawSection(pdf, page, nextY, 'Who Was Involved', chapter.participants);
-  nextY = drawSection(pdf, page, nextY, 'Where It Took Place', readableList(chapter.places));
-  nextY = drawSection(pdf, page, nextY, 'What Happened', readableList(chapter.keyMoments));
-  nextY = drawSection(pdf, page, nextY, 'Transcript', chapter.transcript);
-  return drawSection(pdf, page, nextY, 'Audio and Video References', readableList(chapter.mediaReferences));
+  let nextY = drawSection(pdf, page, y, chapter.title, chapter.prose);
+  nextY = drawSection(pdf, page, nextY, 'Audio and Video References', readableList(chapter.mediaReferences));
+  return drawSection(pdf, page, nextY, 'Source Notes', readableList(chapter.sourceNotes));
 }
 
 function drawSection(
