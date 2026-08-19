@@ -58,21 +58,25 @@ async function writeAiStorybook(title: string, source: StorySource) {
   const { data, error } = await supabase.functions.invoke('ai', {
     body: {
       system: [
-        'You turn family chat history into a warm storybook.',
-        'Write engaging narrative prose, not a transcript or bullet-point summary.',
-        'The grandmother is the main storyteller and the child asks follow-up questions.',
-        'Shape the story around what grandma remembers, what happened, and why it mattered.',
-        'Use only facts from the supplied chat text and media transcripts.',
-        'If an audio or video item has no transcript, mention only that a recording was saved.',
-        'Do not invent events, places, ages, names, or feelings.',
+        'You are a children-and-family storybook writer.',
+        'Transform family chat history into immersive story chapters, not an overview, summary, transcript, or report.',
+        'Grandma is the main character inside her own memory. The child questions are only clues about what story to tell.',
+        'Write scenes with a beginning, middle, and ending: show what grandma did, what changed, and why the memory mattered.',
+        'Use gentle fiction-style narration based only on supplied facts. You may add small sensory details that fit the facts, but do not invent major events, names, places, ages, relatives, or outcomes.',
+        'Never write phrases like "in the chat", "the conversation", "grandma said", "the transcript", or "source material".',
+        'If an audio or video item has a transcript, use the transcript as story material. If it has no transcript, do not guess what happened inside it.',
         'Return valid JSON only.',
       ].join(' '),
       prompt: [
         `Book title: ${title}`,
-        'Write 2-4 short chapters from this source material, like a gentle family memoir.',
+        'Write 2-4 short chapters. Each chapter should feel like a real story scene from grandma’s past.',
+        'Example style: if grandma says her most exciting day was learning to ride a bike at 14, write a chapter about fourteen-year-old grandma on that day: the bicycle, the first wobble, the fear, the moment she balanced, and the joy afterward.',
+        'Do not list messages. Do not summarize the chat. Do not explain that you are making a book.',
+        'Make prose warm, vivid, and readable for a teenager, with 2-4 paragraphs per chapter.',
+        'The overview should sound like a back-cover blurb for the story, not a summary of the chat.',
         'JSON shape: {"overview":"...","chapters":[{"title":"...","prose":["paragraph"],"sourceNotes":["short evidence note"]}]}',
         '',
-        'Source material:',
+        'Facts and transcripts to base the story on:',
         source.lines.join('\n'),
       ].join('\n'),
     },
@@ -129,14 +133,19 @@ function buildFallbackChapters(source: StorySource): ChatBookChapter[] {
   const prose = source.lines
     .filter((line) => !line.includes('no transcript was saved'))
     .slice(0, 8)
-    .map((line) => line.replace(/^.*? - /, ''));
+    .map((line) => line.replace(/^.*? - .*?: /, '').replace(/^.*? - /, '').trim())
+    .filter(Boolean);
 
   return [
     {
-      title: 'Chapter 1: A Saved Conversation',
+      title: 'Chapter 1: A Memory Saved',
       prose:
         prose.length > 0
-          ? prose
+          ? [
+              'A memory began to take shape from the family messages: small details, favorite days, and the kind of moments that are easy to lose if nobody asks.',
+              prose.join(' '),
+              'It was only a draft, waiting for the story writer to turn it into a fuller chapter.',
+            ]
           : ['A family recording was saved, but there was not enough transcript text to write a full chapter.'],
       sourceNotes: ['Generated from saved chat text and available media transcripts.'],
       mediaReferences: source.mediaReferences,
