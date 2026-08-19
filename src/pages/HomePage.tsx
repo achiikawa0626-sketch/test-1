@@ -4,12 +4,16 @@ import { AuthStatus } from '../components/AuthStatus';
 import { HomeFamilyPreview } from '../components/HomeFamilyPreview';
 import { loadFamilyRequests } from '../lib/familyConnections';
 import type { FamilyRequest } from '../lib/familyConnections';
+import { homeLanguages, homeTranslations } from '../lib/homeTranslations';
+import type { HomeLanguage } from '../lib/homeTranslations';
 import { supabase } from '../lib/supabase';
 
 export function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [requests, setRequests] = useState<FamilyRequest[]>([]);
   const [message, setMessage] = useState('');
+  const [language, setLanguage] = useState<HomeLanguage>('en');
+  const text = homeTranslations[language];
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -29,25 +33,34 @@ export function HomePage() {
       <div className="home-shell">
         <section className="home-hero">
           <p className="home-hero__label">AskGrandma</p>
+          <div className="home-language-switcher" aria-label="Home screen language">
+            {homeLanguages.map((code) => (
+              <button
+                className={language === code ? 'active' : ''}
+                key={code}
+                type="button"
+                onClick={() => setLanguage(code)}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <AuthStatus />
-          <h1>Save your family stories before they disappear.</h1>
-          <p className="home-hero__text">
-            Log in, set up your profile once, connect your family, and keep questions and answers in
-            one private chat.
-          </p>
+          <h1>{text.heroTitle}</h1>
+          <p className="home-hero__text">{text.heroText}</p>
           <div className="home-hero__actions">
             {!isLoggedIn && (
               <Link className="home-hero__button" href="/login">
-                Log in or create account
+                {text.loginButton}
               </Link>
             )}
             {isLoggedIn && (
               <Link className="home-hero__button" href="/find-family">
-                Find family
+                {text.findFamilyButton}
               </Link>
             )}
             <Link className="home-hero__button home-hero__button--light" href="/chat">
-              Open chat
+              {text.chatButton}
             </Link>
           </div>
         </section>

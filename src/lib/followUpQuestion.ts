@@ -48,7 +48,7 @@ async function generateQuestionFromAnswer(
         answer.context,
       ].join('\n'),
       system:
-        'Write one short, warm follow-up question a child can ask their grandparent. Base it on the latest answer, mention a concrete detail from it, and keep it natural for a family chat. Return only the question.',
+        'Write one short, warm follow-up question a child can ask their grandparent. Use only details that appear in the latest answer or recent chat. Do not invent names, places, events, or family members. Mention one real detail when there is enough detail. If the answer is too short, ask a simple question that helps them tell more. Keep it natural for a family chat. Return only the question.',
     },
   });
 
@@ -97,7 +97,7 @@ function formatContext(messages: DirectChatMessage[]) {
   return messages
     .map((message) => {
       const speaker = message.isMine ? 'Child' : 'Grandparent';
-      return `${speaker}: ${message.body.trim() || `[${message.mediaType ?? 'media'} message]`}`;
+      return `${speaker}: ${message.body.trim() || `[${message.mediaType ?? 'media'} message, no transcript]`}`;
     })
     .join('\n');
 }

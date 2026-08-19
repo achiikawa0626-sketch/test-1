@@ -83,10 +83,10 @@ export function ChatComposer({
       {canAskQuestions && (isGeneratingFollowUp || followUpQuestion) && (
         <div className="chat-follow-up">
           <div>
-            <p>AI follow-up</p>
+            <p>Follow-up from this chat</p>
             <span>
               {isGeneratingFollowUp
-                ? "Learning grandma's latest story..."
+                ? "Reading the latest story..."
                 : followUpQuestion}
             </span>
           </div>
@@ -101,7 +101,7 @@ export function ChatComposer({
                 Send
               </button>
               <button type="button" onClick={onRefreshFollowUp}>
-                New
+                Refresh
               </button>
             </div>
           )}

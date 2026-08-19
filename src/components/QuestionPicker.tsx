@@ -23,20 +23,20 @@ export function QuestionPicker({
       <textarea value={question} onChange={(event) => onChange(event.target.value)} />
       <div className="question-picker__section">
         <div className="question-picker__heading">
-          <h3>AI follow-up from grandma's story</h3>
+          <h3>Follow-up from the latest story</h3>
           <button
             className="text-button"
             type="button"
             onClick={onGenerateAiQuestion}
             disabled={!canGenerateAiQuestion || isGeneratingAiQuestion}
           >
-            {aiQuestion ? 'New follow-up' : 'Make follow-up'}
+            {aiQuestion ? 'Refresh follow-up' : 'Make follow-up'}
           </button>
         </div>
         {isGeneratingAiQuestion ? (
           <div className="ai-question-loader" role="status" aria-live="polite">
             <span className="ai-question-loader__spark" />
-            <span>Learning the latest story</span>
+            <span>Reading the latest story</span>
             <span className="ai-question-loader__dots" aria-hidden="true">
               <i />
               <i />
