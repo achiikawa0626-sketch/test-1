@@ -23,6 +23,19 @@ type GeminiResponse = {
   }>;
 };
 
+type AiMediaInput = {
+  mimeType?: unknown;
+  data?: unknown;
+};
+
+type GeminiPart = {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+};
+
 function json(body: object, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -40,9 +53,14 @@ Deno.serve(async (req) => {
       return json({ error: 'AI пока не настроен. Попроси наставника проверить секрет.' }, 503);
     }
 
-    const body = (await req.json()) as { prompt?: unknown; system?: unknown };
+    const body = (await req.json()) as {
+      prompt?: unknown;
+      system?: unknown;
+      media?: unknown;
+    };
     const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
     const system = typeof body.system === 'string' ? body.system.trim() : '';
+    const mediaParts = readMediaParts(body.media);
 
     if (!prompt) return json({ error: 'Напиши запрос для AI.' }, 400);
     if (prompt.length > 10_000 || system.length > 5_000) {
@@ -56,7 +74,7 @@ Deno.serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts: [{ text: prompt }, ...mediaParts] }],
         }),
       },
     );
@@ -79,3 +97,16 @@ Deno.serve(async (req) => {
     return json({ error: 'Не получилось обратиться к AI. Попробуй ещё раз.' }, 500);
   }
 });
+
+function readMediaParts(value: unknown): GeminiPart[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    const media = item as AiMediaInput;
+    const mimeType = typeof media.mimeType === 'string' ? media.mimeType : '';
+    const data = typeof media.data === 'string' ? media.data : '';
+
+    if (!mimeType || !data) return [];
+    return [{ inlineData: { mimeType, data } }];
+  });
+}

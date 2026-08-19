@@ -23,6 +23,11 @@ export type ChatBook = {
   chapters: ChatBookChapter[];
 };
 
+type AiMediaPart = {
+  mimeType: string;
+  data: string;
+};
+
 export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> {
   const bookMessages = input.messages.filter((message) => message.body.trim() || message.mediaUrl);
   if (bookMessages.length === 0) {
@@ -33,25 +38,17 @@ export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> 
     title: `${input.contact.displayName} and ${input.myName}`,
     authorLine: `A family storybook for ${input.myName} and ${input.contact.displayName}`,
   };
-  const source = buildSource(input, bookMessages);
+  const source = await buildSource(input, bookMessages);
+  const draft = await writeAiStorybook(base.title, source);
 
-  try {
-    const draft = await writeAiStorybook(base.title, source);
-    return {
-      ...base,
-      overview: draft.overview,
-      chapters: draft.chapters.map((chapter) => ({
-        ...chapter,
-        mediaReferences: source.mediaReferences,
-      })),
-    };
-  } catch {
-    return {
-      ...base,
-      overview: buildFallbackOverview(input, source),
-      chapters: buildFallbackChapters(source),
-    };
-  }
+  return {
+    ...base,
+    overview: draft.overview,
+    chapters: draft.chapters.map((chapter) => ({
+      ...chapter,
+      mediaReferences: source.mediaReferences,
+    })),
+  };
 }
 
 async function writeAiStorybook(title: string, source: StorySource) {
@@ -64,7 +61,9 @@ async function writeAiStorybook(title: string, source: StorySource) {
         'Write scenes with a beginning, middle, and ending: show what grandma did, what changed, and why the memory mattered.',
         'Use gentle fiction-style narration based only on supplied facts. You may add small sensory details that fit the facts, but do not invent major events, names, places, ages, relatives, or outcomes.',
         'Never write phrases like "in the chat", "the conversation", "grandma said", "the transcript", or "source material".',
-        'If an audio or video item has a transcript, use the transcript as story material. If it has no transcript, do not guess what happened inside it.',
+        'Use facts from supplied chat text, transcripts, and attached audio/video files.',
+        'Listen to attached audio and video. Use what is said there as story material.',
+        'If a media file cannot be understood, do not guess its contents.',
         'Return valid JSON only.',
       ].join(' '),
       prompt: [
@@ -76,9 +75,10 @@ async function writeAiStorybook(title: string, source: StorySource) {
         'The overview should sound like a back-cover blurb for the story, not a summary of the chat.',
         'JSON shape: {"overview":"...","chapters":[{"title":"...","prose":["paragraph"],"sourceNotes":["short evidence note"]}]}',
         '',
-        'Facts and transcripts to base the story on:',
+        'Facts, transcripts, and attached media to base the story on:',
         source.lines.join('\n'),
       ].join('\n'),
+      media: source.mediaParts,
     },
   });
 
@@ -89,11 +89,13 @@ async function writeAiStorybook(title: string, source: StorySource) {
 type StorySource = {
   lines: string[];
   mediaReferences: string[];
+  mediaParts: AiMediaPart[];
 };
 
-function buildSource(input: ChatBookInput, messages: DirectChatMessage[]): StorySource {
+async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]): Promise<StorySource> {
   const mediaReferences: string[] = [];
-  const lines = messages.map((message) => {
+  const mediaParts: AiMediaPart[] = [];
+  const lines = await Promise.all(messages.map(async (message) => {
     const speaker = message.isMine ? input.myName : input.contact.displayName;
     const sentAt = new Intl.DateTimeFormat('en', {
       dateStyle: 'medium',
@@ -104,51 +106,49 @@ function buildSource(input: ChatBookInput, messages: DirectChatMessage[]): Story
     if (message.mediaType && message.mediaUrl) {
       const mediaLabel = message.mediaType === 'audio' ? 'audio/soundtrack' : 'video';
       mediaReferences.push(`${mediaLabel} from ${speaker}: ${message.mediaUrl}`);
+      const mediaPart = await loadMediaPart(message.mediaUrl, message.mediaType);
+      if (mediaPart) mediaParts.push(mediaPart);
+
       return body
         ? `${sentAt} - ${speaker} shared a ${mediaLabel}. Transcript: ${cleanTranscript(body)}`
-        : `${sentAt} - ${speaker} shared a ${mediaLabel}, but no transcript was saved.`;
+        : `${sentAt} - ${speaker} shared a ${mediaLabel}. The file is attached for Gemini to read.`;
     }
 
     return `${sentAt} - ${speaker}: ${body}`;
-  });
+  }));
 
-  return { lines, mediaReferences };
+  return { lines, mediaReferences, mediaParts };
 }
 
 function cleanTranscript(value: string) {
   return value.replace(/^Story transcript:\s*/i, '').trim();
 }
 
-function buildFallbackOverview(input: ChatBookInput, source: StorySource) {
-  return [
-    `${input.myName} and ${input.contact.displayName} saved a family conversation as a storybook draft.`,
-    'The AI story writer was not available, so this version uses a simple narrative from the saved chat text.',
-    source.mediaReferences.length > 0
-      ? 'Audio and video references are listed after the chapters.'
-      : 'No audio or video references were found.',
-  ].join(' ');
+async function loadMediaPart(url: string, mediaType: DirectChatMessage['mediaType']) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return undefined;
+
+    const blob = await response.blob();
+    if (blob.size > 7_000_000) return undefined;
+
+    return {
+      mimeType: blob.type || (mediaType === 'video' ? 'video/webm' : 'audio/webm'),
+      data: await blobToBase64(blob),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
-function buildFallbackChapters(source: StorySource): ChatBookChapter[] {
-  const prose = source.lines
-    .filter((line) => !line.includes('no transcript was saved'))
-    .slice(0, 8)
-    .map((line) => line.replace(/^.*? - .*?: /, '').replace(/^.*? - /, '').trim())
-    .filter(Boolean);
+async function blobToBase64(blob: Blob) {
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const chunks: string[] = [];
 
-  return [
-    {
-      title: 'Chapter 1: A Memory Saved',
-      prose:
-        prose.length > 0
-          ? [
-              'A memory began to take shape from the family messages: small details, favorite days, and the kind of moments that are easy to lose if nobody asks.',
-              prose.join(' '),
-              'It was only a draft, waiting for the story writer to turn it into a fuller chapter.',
-            ]
-          : ['A family recording was saved, but there was not enough transcript text to write a full chapter.'],
-      sourceNotes: ['Generated from saved chat text and available media transcripts.'],
-      mediaReferences: source.mediaReferences,
-    },
-  ];
+  for (let index = 0; index < bytes.length; index += 8192) {
+    chunks.push(String.fromCharCode(...bytes.slice(index, index + 8192)));
+  }
+
+  return btoa(chunks.join(''));
 }
