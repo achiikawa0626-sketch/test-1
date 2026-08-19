@@ -1,6 +1,7 @@
-import type { ChatBook } from './chatBook';
+import type { ChatBook, ChatBookChapter } from './chatBook';
 
 type PdfDocument = import('jspdf').jsPDF;
+type PageBox = { width: number; height: number; margin: number };
 
 export async function downloadChatBookPdf(book: ChatBook) {
   const { jsPDF } = await import('jspdf');
@@ -10,40 +11,81 @@ export async function downloadChatBookPdf(book: ChatBook) {
     height: pdf.internal.pageSize.getHeight(),
     margin: 54,
   };
-  const textWidth = page.width - page.margin * 2;
 
   drawCover(pdf, book, page);
   pdf.addPage();
 
   let y = page.margin;
-  pdf.setFont('times', 'normal');
-  pdf.setFontSize(13);
-  pdf.setTextColor('#232323');
-
-  splitParagraphs(book.body).forEach((paragraph) => {
-    const lines = pdf.splitTextToSize(paragraph, textWidth) as string[];
-    lines.forEach((line) => {
-      if (y > page.height - page.margin) {
-        drawPageNumber(pdf, page);
-        pdf.addPage();
-        y = page.margin;
-      }
-
-      pdf.text(line, page.margin, y);
-      y += 18;
-    });
-    y += 10;
+  y = drawSection(pdf, page, y, 'Story Overview', [book.overview]);
+  book.chapters.forEach((chapter) => {
+    y = drawChapter(pdf, page, y, chapter);
   });
 
   drawPageNumber(pdf, page);
   pdf.save(`${slugify(book.title)}.pdf`);
 }
 
-function drawCover(
+function drawChapter(pdf: PdfDocument, page: PageBox, y: number, chapter: ChatBookChapter) {
+  let nextY = drawSection(pdf, page, y, chapter.title, [chapter.summary]);
+  nextY = drawSection(pdf, page, nextY, 'Who Was Involved', chapter.participants);
+  nextY = drawSection(pdf, page, nextY, 'Where It Took Place', readableList(chapter.places));
+  nextY = drawSection(pdf, page, nextY, 'What Happened', readableList(chapter.keyMoments));
+  nextY = drawSection(pdf, page, nextY, 'Transcript', chapter.transcript);
+  return drawSection(pdf, page, nextY, 'Audio and Video References', readableList(chapter.mediaReferences));
+}
+
+function drawSection(
   pdf: PdfDocument,
-  book: ChatBook,
-  page: { width: number; height: number; margin: number },
+  page: PageBox,
+  y: number,
+  heading: string,
+  paragraphs: string[],
 ) {
+  let nextY = ensureRoom(pdf, page, y, 54);
+  pdf.setFont('times', 'bold');
+  pdf.setFontSize(16);
+  pdf.setTextColor('#7a4d76');
+  pdf.text(heading, page.margin, nextY);
+  nextY += 24;
+
+  pdf.setFont('times', 'normal');
+  pdf.setFontSize(12);
+  pdf.setTextColor('#232323');
+
+  paragraphs.forEach((paragraph) => {
+    nextY = drawParagraph(pdf, page, nextY, paragraph);
+  });
+
+  return nextY + 8;
+}
+
+function drawParagraph(pdf: PdfDocument, page: PageBox, y: number, paragraph: string) {
+  const textWidth = page.width - page.margin * 2;
+  const lines = pdf.splitTextToSize(paragraph, textWidth) as string[];
+  let nextY = y;
+
+  lines.forEach((line) => {
+    nextY = ensureRoom(pdf, page, nextY, 18);
+    pdf.text(line, page.margin, nextY);
+    nextY += 17;
+  });
+
+  return nextY + 5;
+}
+
+function ensureRoom(pdf: PdfDocument, page: PageBox, y: number, needed: number) {
+  if (y + needed <= page.height - page.margin) return y;
+
+  drawPageNumber(pdf, page);
+  pdf.addPage();
+  return page.margin;
+}
+
+function readableList(items: string[]) {
+  return items.length > 0 ? items.map((item) => `- ${item}`) : ['- None found in this chapter.'];
+}
+
+function drawCover(pdf: PdfDocument, book: ChatBook, page: PageBox) {
   pdf.setFillColor('#fff7ec');
   pdf.rect(0, 0, page.width, page.height, 'F');
   pdf.setDrawColor('#7a4d76');
@@ -68,18 +110,11 @@ function drawCover(
   });
 }
 
-function drawPageNumber(
-  pdf: PdfDocument,
-  page: { width: number; height: number; margin: number },
-) {
+function drawPageNumber(pdf: PdfDocument, page: PageBox) {
   pdf.setFont('times', 'normal');
   pdf.setFontSize(10);
   pdf.setTextColor('#777777');
   pdf.text(String(pdf.getNumberOfPages()), page.width / 2, page.height - 28, { align: 'center' });
-}
-
-function splitParagraphs(text: string) {
-  return text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
 }
 
 function slugify(value: string) {
