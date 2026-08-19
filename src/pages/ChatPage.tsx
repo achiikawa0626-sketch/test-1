@@ -443,6 +443,7 @@ export function ChatPage() {
                   messages={chatMessages}
                   messageActions={messageActions}
                   reactions={reactions}
+                  text={text}
                   onCopy={copyMessage}
                   onDelete={deleteMessage}
                   onFavorite={toggleFavorite}

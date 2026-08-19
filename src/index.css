@@ -1902,6 +1902,10 @@ button.small { padding: 6px 10px; font-size: 14px; }
   background: #fff;
 }
 
+.chat-bubble--media {
+  width: min(78%, 300px);
+}
+
 .chat-bubble__role {
   color: #d96b92;
   font-size: 12px;
@@ -1962,7 +1966,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-bubble audio,
 .chat-bubble video {
   width: 100%;
-  min-width: 0;
+  min-width: min(220px, 100%);
   max-width: 100%;
   border-radius: 8px;
 }

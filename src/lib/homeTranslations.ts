@@ -113,6 +113,9 @@ export type HomeTranslation = {
   writingBook: string;
   bookDownloaded: string;
   questionFromHome: string;
+  dateLocale: string;
+  todayLabel: string;
+  yesterdayLabel: string;
 };
 
 export const homeLanguages: HomeLanguage[] = ['en', 'es', 'ru', 'fr'];
@@ -237,6 +240,9 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     writingBook: 'Writing your book...',
     bookDownloaded: 'Book PDF downloaded.',
     questionFromHome: 'Question from home',
+    dateLocale: 'en',
+    todayLabel: 'Today',
+    yesterdayLabel: 'Yesterday',
   },
   es: {
     languageName: 'Español',
@@ -359,6 +365,9 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     writingBook: 'Escribiendo tu libro...',
     bookDownloaded: 'PDF del libro descargado.',
     questionFromHome: 'Pregunta desde inicio',
+    dateLocale: 'es',
+    todayLabel: 'Hoy',
+    yesterdayLabel: 'Ayer',
   },
   ru: {
     languageName: 'Русский',
@@ -480,6 +489,9 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     writingBook: 'Создаем вашу книгу...',
     bookDownloaded: 'PDF книги скачан.',
     questionFromHome: 'Вопрос с главной',
+    dateLocale: 'ru',
+    todayLabel: 'Сегодня',
+    yesterdayLabel: 'Вчера',
   },
   fr: {
     languageName: 'Français',
@@ -605,5 +617,8 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     writingBook: 'Écriture de votre livre...',
     bookDownloaded: 'PDF du livre téléchargé.',
     questionFromHome: 'Question depuis l’accueil',
+    dateLocale: 'fr',
+    todayLabel: 'Aujourd’hui',
+    yesterdayLabel: 'Hier',
   },
 };

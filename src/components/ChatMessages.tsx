@@ -5,11 +5,13 @@ import type { ChatMessage } from '../lib/chat';
 import { messageDayKey } from '../lib/chatDates';
 import type { DirectChatMessageActions } from '../lib/directChatMessageActions';
 import type { DirectChatReaction } from '../lib/directChatReactions';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type ChatMessagesProps = {
   messages: ChatMessage[];
   messageActions: DirectChatMessageActions;
   reactions: Record<string, DirectChatReaction[]>;
+  text: HomeTranslation;
   onCopy: (text: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onFavorite: (message: ChatMessage) => Promise<void>;
@@ -18,8 +20,8 @@ type ChatMessagesProps = {
   onReply: (message: ChatMessage) => void;
 };
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat('en', {
+function formatTime(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
@@ -29,6 +31,7 @@ export function ChatMessages({
   messages,
   messageActions,
   reactions,
+  text,
   onCopy,
   onDelete,
   onFavorite,
@@ -71,9 +74,14 @@ export function ChatMessages({
 
         return (
           <Fragment key={message.id}>
-            {startsNewDay && <ChatDateDivider date={message.createdAt} />}
+            {startsNewDay && <ChatDateDivider date={message.createdAt} text={text} />}
             <article
-              className={`chat-bubble ${message.isMine ? 'mine' : 'theirs'} ${message.senderRole}`}
+              className={[
+                'chat-bubble',
+                message.isMine ? 'mine' : 'theirs',
+                message.senderRole,
+                message.mediaType ? 'chat-bubble--media' : '',
+              ].join(' ')}
             >
               <button
                 className="chat-bubble__menu-trigger"
@@ -130,7 +138,7 @@ export function ChatMessages({
                   onReply={onReply}
                 />
               )}
-              <time>{formatTime(message.createdAt)}</time>
+              <time>{formatTime(message.createdAt, text.dateLocale)}</time>
             </article>
           </Fragment>
         );

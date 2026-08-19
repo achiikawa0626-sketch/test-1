@@ -1,9 +1,12 @@
-export function formatChatDateDivider(value: string) {
+export function formatChatDateDivider(
+  value: string,
+  labels: { locale: string; today: string; yesterday: string },
+) {
   const date = new Date(value);
-  if (isSameDay(date, new Date())) return 'Today';
-  if (isSameDay(date, addDays(new Date(), -1))) return 'Yesterday';
+  if (isSameDay(date, new Date())) return labels.today;
+  if (isSameDay(date, addDays(new Date(), -1))) return labels.yesterday;
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(labels.locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
