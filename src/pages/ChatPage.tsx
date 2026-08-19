@@ -8,6 +8,7 @@ import { ChatLoading } from '../components/ChatLoading';
 import { ChatMessages } from '../components/ChatMessages';
 import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
+import { useAppLanguage } from '../lib/appLanguage';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
 import { generateChatBook } from '../lib/chatBook';
 import { downloadChatBookPdf } from '../lib/chatBookPdf';
@@ -31,6 +32,8 @@ import {
 import type { DirectChatReaction } from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
 import { generateFollowUpQuestionFromChat } from '../lib/followUpQuestion';
+import { homeTranslations } from '../lib/homeTranslations';
+import type { HomeTranslation } from '../lib/homeTranslations';
 import {
   loadPrivateContactAvatar,
   uploadPrivateContactAvatar,
@@ -47,6 +50,8 @@ type ChatPresence = {
 };
 
 export function ChatPage() {
+  const [language] = useAppLanguage();
+  const text = homeTranslations[language];
   const [mode, setMode] = useState<AccountMode>(readAccountMode);
   const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [activeContact, setActiveContact] = useState<FamilyProfile>();
@@ -353,7 +358,7 @@ export function ChatPage() {
 
     try {
       setContactAvatarUrl(await uploadPrivateContactAvatar(activeContact.id, file));
-      setMessage('Chat photo updated for you.');
+      setMessage(text.chatPhotoUpdated);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not update chat photo.');
     } finally {
@@ -364,7 +369,7 @@ export function ChatPage() {
   async function exportChatBook() {
     if (!activeContact || isExportingBook) return;
     setIsExportingBook(true);
-    setMessage('Writing your book...');
+      setMessage(text.writingBook);
 
     try {
       const book = await generateChatBook({
@@ -373,7 +378,7 @@ export function ChatPage() {
         myName,
       });
       await downloadChatBookPdf(book);
-      setMessage('Book PDF downloaded.');
+      setMessage(text.bookDownloaded);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not export this chat as a book.');
     } finally {
@@ -400,23 +405,24 @@ export function ChatPage() {
   return (
     <main className={`chat-page chat-page--${mode}`}>
       <header className="chat-header">
-        <Link className="chat-back" href="/find-family">Back</Link>
+        <Link className="chat-back" href="/find-family">{text.backButton}</Link>
         <ChatContactHeader
           contact={activeContact}
           customAvatarUrl={contactAvatarUrl}
           isOnline={isContactOnline}
           isUploadingAvatar={isUploadingContactAvatar}
+          text={text}
           onAvatarChange={changeContactAvatar}
         />
-        <AuthStatus compact />
+        <AuthStatus compact labels={text} />
       </header>
 
       <section className="chat-shell">
-        {!isAuthReady ? <ChatEmpty text="Checking your login..." /> : null}
-        {isAuthReady && !isLoggedIn ? <ChatLogin /> : null}
+        {!isAuthReady ? <ChatEmpty text={text.checkingLogin} /> : null}
+        {isAuthReady && !isLoggedIn ? <ChatLogin text={text} /> : null}
         {isAuthReady && isLoggedIn ? (
           isLoadingChat ? (
-            <ChatLoading text="Loading family chat..." />
+            <ChatLoading text={text.loadingFamilyChat} />
           ) : (
           <>
             {!isLoadingContacts && (
@@ -424,12 +430,13 @@ export function ChatPage() {
                 activeContact={activeContact}
                 contacts={contacts}
                 isExportingBook={isExportingBook}
+                text={text}
                 onContactChange={setActiveContact}
                 onExportBook={activeContact ? exportChatBook : undefined}
               />
             )}
             {message && <p className="message">{message}</p>}
-            {initialText && <InitialQuestion text={initialText} />}
+            {initialText && <InitialQuestion label={text.questionFromHome} text={initialText} />}
             {activeContact ? (
               <>
                 <ChatMessages
@@ -450,6 +457,7 @@ export function ChatPage() {
                   isGeneratingFollowUp={isGeneratingFollowUp}
                   replyTo={replyTo}
                   isSending={isSending}
+                  text={text}
                   onCancelReply={() => setReplyTo(undefined)}
                   onRefreshFollowUp={() => void loadFollowUpQuestion()}
                   onSendFollowUp={sendFollowUpQuestion}
@@ -459,8 +467,9 @@ export function ChatPage() {
               </>
             ) : (
               <ChatEmpty
-                text="No family connected yet."
-                help="Send or accept a family request, then this becomes your real chat."
+                text={text.noFamilyConnected}
+                help={text.noFamilyConnectedHelp}
+                linkLabel={text.findFamilyButton}
               />
             )}
           </>
@@ -493,12 +502,14 @@ function ContactStrip({
   contacts,
   activeContact,
   isExportingBook,
+  text,
   onContactChange,
   onExportBook,
 }: {
   contacts: FamilyProfile[];
   activeContact?: FamilyProfile;
   isExportingBook: boolean;
+  text: HomeTranslation;
   onContactChange: (contact: FamilyProfile) => void;
   onExportBook?: () => Promise<void>;
 }) {
@@ -506,7 +517,7 @@ function ContactStrip({
     <div className="chat-contact-strip">
       <div className="chat-contact-strip__list">
         {contacts.length === 0 ? (
-          <Link className="text-button" href="/find-family">Find family</Link>
+          <Link className="text-button" href="/find-family">{text.findFamilyButton}</Link>
         ) : (
           contacts.map((contact) => (
             <button
@@ -527,39 +538,47 @@ function ContactStrip({
           disabled={isExportingBook}
           onClick={() => void onExportBook()}
         >
-          {isExportingBook ? 'Writing...' : 'Export book'}
+          {isExportingBook ? text.writingLabel : text.exportBookButton}
         </button>
       )}
     </div>
   );
 }
 
-function ChatLogin() {
+function ChatLogin({ text }: { text: HomeTranslation }) {
   return (
     <div className="chat-login-panel">
       <div>
-        <p>Log in before chat.</p>
-        <span>Use Google or email first, then connect your family.</span>
+        <p>{text.logInBeforeChat}</p>
+        <span>{text.chatLoginHelp}</span>
       </div>
       <Auth />
     </div>
   );
 }
 
-function ChatEmpty({ text, help }: { text: string; help?: string }) {
+function ChatEmpty({
+  text,
+  help,
+  linkLabel,
+}: {
+  text: string;
+  help?: string;
+  linkLabel?: string;
+}) {
   return (
     <div className="chat-empty">
       <p>{text}</p>
       {help && <span>{help}</span>}
-      {help && <Link className="text-button" href="/find-family">Find family</Link>}
+      {help && <Link className="text-button" href="/find-family">{linkLabel}</Link>}
     </div>
   );
 }
 
-function InitialQuestion({ text }: { text: string }) {
+function InitialQuestion({ label, text }: { label: string; text: string }) {
   return (
     <div className="chat-question">
-      <span>Question from home</span>
+      <span>{label}</span>
       <p>{text}</p>
     </div>
   );

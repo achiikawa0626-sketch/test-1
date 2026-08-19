@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMediaType } from '../lib/chat';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -23,10 +24,11 @@ type SpeechRecognitionLike = {
 type ChatRecorderProps = {
   allowedTypes: ChatMediaType[];
   isSending: boolean;
+  text: HomeTranslation;
   onSend: (blob: Blob, mediaType: ChatMediaType, transcript?: string) => Promise<void>;
 };
 
-export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderProps) {
+export function ChatRecorder({ allowedTypes, isSending, text, onSend }: ChatRecorderProps) {
   const recorderRef = useRef<MediaRecorder>();
   const chunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<SpeechRecognitionLike>();
@@ -82,9 +84,9 @@ export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderPr
       startTranscription();
       recorder.start();
       setRecording(mediaType);
-      setMessage(`${mediaType === 'audio' ? 'Voice' : 'Video'} recording started.`);
+      setMessage(mediaType === 'audio' ? text.voiceRecordingStarted : text.videoRecordingStarted);
     } catch {
-      setMessage('Recording permission was blocked.');
+      setMessage(text.recordingBlocked);
     }
   }
 
@@ -96,7 +98,7 @@ export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderPr
     recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: `${mediaType}/webm` });
       await onSend(blob, mediaType, transcriptRef.current.trim());
-      setMessage(`${mediaType === 'audio' ? 'Voice' : 'Video'} answer sent.`);
+      setMessage(mediaType === 'audio' ? text.voiceAnswerSent : text.videoAnswerSent);
     };
     recognitionRef.current?.stop();
     recorder.stop();
@@ -112,9 +114,9 @@ export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderPr
           type="button"
           onClick={() => void start('audio')}
           disabled={Boolean(recording) || isSending}
-          title="Record voice"
+          title={text.recordVoiceTitle}
         >
-          Mic
+          {text.micButton}
         </button>
       )}
       {allowedTypes.includes('video') && (
@@ -123,9 +125,9 @@ export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderPr
           type="button"
           onClick={() => void start('video')}
           disabled={Boolean(recording) || isSending}
-          title="Record video"
+          title={text.recordVideoTitle}
         >
-          Camera
+          {text.cameraButton}
         </button>
       )}
       {recording && (
@@ -135,7 +137,7 @@ export function ChatRecorder({ allowedTypes, isSending, onSend }: ChatRecorderPr
           onClick={() => void stopAndSend()}
           disabled={isSending}
         >
-          {isSending ? 'Sending...' : `Send ${recording}`}
+          {isSending ? text.sendingLabel : text.sendRecording(recording)}
         </button>
       )}
       {message && <p>{message}</p>}

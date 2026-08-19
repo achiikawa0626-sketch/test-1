@@ -1306,6 +1306,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-page {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  width: min(100%, 430px);
   max-width: 430px;
   height: 100vh;
   max-height: 100vh;
@@ -1320,6 +1321,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 24px 24px 0 0;
   background: #315d67;
@@ -1527,7 +1529,9 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
   min-height: 0;
+  min-width: 0;
   border: 1px solid #c9d3d6;
   border-top: 0;
   border-radius: 0 0 24px 24px;
@@ -1573,6 +1577,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   padding: 8px;
   background: rgba(255, 255, 255, 0.65);
 }
@@ -1628,6 +1633,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
   align-content: start;
   gap: 8px;
   min-height: 0;
+  min-width: 0;
   padding: 14px 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1854,6 +1860,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
   gap: 5px;
   width: fit-content;
   max-width: 78%;
+  min-width: 0;
   padding: 8px 10px 5px;
   border: 0;
   border-radius: 8px 8px 8px 2px;
@@ -1909,6 +1916,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
   color: #1c2528;
   font-size: 14px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
@@ -1954,7 +1962,8 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .chat-bubble audio,
 .chat-bubble video {
   width: 100%;
-  min-width: 230px;
+  min-width: 0;
+  max-width: 100%;
   border-radius: 8px;
 }
 

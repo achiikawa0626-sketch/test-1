@@ -1,3 +1,5 @@
+import type { HomeTranslation } from '../lib/homeTranslations';
+
 const suggestedQuestions = [
   'How did you feel when you were 16?',
   'What was your childhood like?',
@@ -8,20 +10,22 @@ const suggestedQuestions = [
 ];
 
 type QuestionSuggestionsProps = {
+  text: HomeTranslation;
   onClose: () => void;
   onPickQuestion: (question: string) => void;
 };
 
 export function QuestionSuggestions({
+  text,
   onClose,
   onPickQuestion,
 }: QuestionSuggestionsProps) {
   return (
     <div className="question-suggestions">
       <div className="question-suggestions__header">
-        <strong>Question ideas</strong>
-        <button type="button" onClick={onClose} aria-label="Close question ideas">
-          Skip
+        <strong>{text.questionIdeasTitle}</strong>
+        <button type="button" onClick={onClose} aria-label={text.skipButton}>
+          {text.skipButton}
         </button>
       </div>
       <div className="question-suggestions__row">

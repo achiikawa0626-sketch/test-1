@@ -1,11 +1,13 @@
 import { useRef } from 'react';
 import type { FamilyProfile } from '../lib/familyConnections';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type ChatContactHeaderProps = {
   contact?: FamilyProfile;
   customAvatarUrl?: string;
   isOnline?: boolean;
   isUploadingAvatar?: boolean;
+  text: HomeTranslation;
   onAvatarChange?: (file: File) => Promise<void>;
 };
 
@@ -14,11 +16,12 @@ export function ChatContactHeader({
   customAvatarUrl,
   isOnline,
   isUploadingAvatar,
+  text,
   onAvatarChange,
 }: ChatContactHeaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const title = contact?.displayName ?? 'Family chat';
-  const subtitle = contact?.username ? `@${contact.username}` : 'private chat';
+  const title = contact?.displayName ?? text.familyChatTitle;
+  const subtitle = contact?.username ? `@${contact.username}` : text.privateChatLabel;
   const avatarUrl = customAvatarUrl ?? contact?.avatarUrl;
   const canChangeAvatar = Boolean(contact && onAvatarChange);
 
@@ -27,9 +30,9 @@ export function ChatContactHeader({
       <button
         className={canChangeAvatar ? 'chat-avatar' : 'chat-avatar chat-avatar--static'}
         type="button"
-        aria-label={canChangeAvatar ? `Change ${title}'s chat photo` : 'Chat photo'}
+        aria-label={canChangeAvatar ? text.changeChatPhotoLabel : text.chatPhotoLabel}
         disabled={!canChangeAvatar || isUploadingAvatar}
-        title={canChangeAvatar ? 'Change chat photo' : undefined}
+        title={canChangeAvatar ? text.changeChatPhotoLabel : undefined}
         onClick={() => inputRef.current?.click()}
       >
         {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{title.charAt(0).toUpperCase()}</span>}
@@ -54,7 +57,7 @@ export function ChatContactHeader({
           {contact && (
             <span className={isOnline ? 'chat-status online' : 'chat-status offline'}>
               <i />
-              {isOnline ? 'online' : 'away'}
+              {isOnline ? text.onlineLabel : text.awayLabel}
             </span>
           )}
         </p>

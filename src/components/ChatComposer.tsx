@@ -3,6 +3,7 @@ import { ChatRecorder } from './ChatRecorder';
 import { QuestionSuggestions } from './QuestionSuggestions';
 import type { AccountMode } from '../lib/accountMode';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
+import type { HomeTranslation } from '../lib/homeTranslations';
 
 type ChatComposerProps = {
   followUpQuestion: string;
@@ -11,6 +12,7 @@ type ChatComposerProps = {
   isGeneratingFollowUp: boolean;
   replyTo?: ChatMessage;
   isSending: boolean;
+  text: HomeTranslation;
   onCancelReply: () => void;
   onRefreshFollowUp: () => void;
   onSendFollowUp: (text: string) => Promise<void>;
@@ -25,36 +27,39 @@ export function ChatComposer({
   isGeneratingFollowUp,
   replyTo,
   isSending,
+  text,
   onCancelReply,
   onRefreshFollowUp,
   onSendFollowUp,
   onSendText,
   onSendMedia,
 }: ChatComposerProps) {
-  const [text, setText] = useState('');
+  const [draft, setDraft] = useState('');
   const [isQuestionPanelOpen, setIsQuestionPanelOpen] = useState(false);
   const canAskQuestions = mode === 'kid';
   const allowedTypes: ChatMediaType[] = mode === 'kid' ? ['audio'] : ['audio', 'video'];
   const placeholder =
-    mode === 'kid' ? 'Ask grandma something...' : 'Write an answer or record your voice...';
+    mode === 'kid' ? text.askGrandmaPlaceholder : text.answerPlaceholder;
 
   useEffect(() => {
-    if (initialText.trim()) setText(initialText);
+    if (initialText.trim()) setDraft(initialText);
   }, [initialText]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (isSending || !text.trim()) return;
-    const replyLabel = replyTo?.senderRole === 'kid' ? 'Kid' : 'Grandma';
-    const replyLine = replyTo ? `Reply to ${replyLabel}: "${replyTo.body || 'media'}"\n\n` : '';
-    await onSendText(`${replyLine}${text}`);
-    setText('');
+    if (isSending || !draft.trim()) return;
+    const replyLabel = replyTo?.senderRole === 'kid' ? text.replyKidLabel : text.replyGrandmaLabel;
+    const replyLine = replyTo
+      ? `${text.replyingTo(replyLabel)}: "${replyTo.body || text.mediaMessageLabel}"\n\n`
+      : '';
+    await onSendText(`${replyLine}${draft}`);
+    setDraft('');
     onCancelReply();
   }
 
   function pickQuestion(question: string) {
     if (!question.trim()) return;
-    setText(question.trim());
+    setDraft(question.trim());
     setIsQuestionPanelOpen(false);
   }
 
@@ -67,8 +72,8 @@ export function ChatComposer({
     <section className="chat-composer">
       {replyTo && (
         <div className="chat-reply-draft">
-          <p>Replying to {replyTo.senderRole === 'kid' ? 'Kid' : 'Grandma'}</p>
-          <span>{replyTo.body || 'Media message'}</span>
+          <p>{text.replyingTo(replyTo.senderRole === 'kid' ? text.replyKidLabel : text.replyGrandmaLabel)}</p>
+          <span>{replyTo.body || text.mediaMessageLabel}</span>
           <button type="button" onClick={onCancelReply} aria-label="Cancel reply">
             ×
           </button>
@@ -76,6 +81,7 @@ export function ChatComposer({
       )}
       {canAskQuestions && isQuestionPanelOpen && (
         <QuestionSuggestions
+          text={text}
           onClose={() => setIsQuestionPanelOpen(false)}
           onPickQuestion={pickQuestion}
         />
@@ -83,10 +89,10 @@ export function ChatComposer({
       {canAskQuestions && (isGeneratingFollowUp || followUpQuestion) && (
         <div className="chat-follow-up">
           <div>
-            <p>Follow-up from this chat</p>
+            <p>{text.followUpTitle}</p>
             <span>
               {isGeneratingFollowUp
-                ? "Reading the latest story..."
+                ? text.readingLatestStory
                 : followUpQuestion}
             </span>
           </div>
@@ -95,13 +101,13 @@ export function ChatComposer({
           ) : (
             <div className="chat-follow-up__actions">
               <button type="button" onClick={() => pickQuestion(followUpQuestion)}>
-                Use
+                {text.useButton}
               </button>
               <button type="button" onClick={() => void sendFollowUp()} disabled={isSending}>
-                Send
+                {text.sendButton}
               </button>
               <button type="button" onClick={onRefreshFollowUp}>
-                Refresh
+                {text.refreshButton}
               </button>
             </div>
           )}
@@ -116,23 +122,28 @@ export function ChatComposer({
             className="chat-plus-button"
             type="button"
             aria-label="Open question suggestions"
-            title="Open question suggestions"
+            title={text.openQuestionSuggestions}
             onClick={() => setIsQuestionPanelOpen((isOpen) => !isOpen)}
           >
             +
           </button>
         )}
         <textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
           placeholder={placeholder}
           disabled={isSending}
         />
         <button className="chat-send-button" type="submit" disabled={isSending}>
-          {isSending ? 'Sending...' : 'Send'}
+          {isSending ? text.sendingLabel : text.sendButton}
         </button>
       </form>
-      <ChatRecorder allowedTypes={allowedTypes} isSending={isSending} onSend={onSendMedia} />
+      <ChatRecorder
+        allowedTypes={allowedTypes}
+        isSending={isSending}
+        text={text}
+        onSend={onSendMedia}
+      />
     </section>
   );
 }

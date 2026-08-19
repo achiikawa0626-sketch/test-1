@@ -69,6 +69,50 @@ export type HomeTranslation = {
   couldNotUpdateRequest: string;
   requestCanceled: string;
   couldNotCancelRequest: string;
+  backButton: string;
+  privateChatLabel: string;
+  onlineLabel: string;
+  awayLabel: string;
+  familyChatTitle: string;
+  chatPhotoLabel: string;
+  changeChatPhotoLabel: string;
+  chatPhotoUpdated: string;
+  askGrandmaPlaceholder: string;
+  answerPlaceholder: string;
+  sendButton: string;
+  sendingLabel: string;
+  micButton: string;
+  cameraButton: string;
+  recordVoiceTitle: string;
+  recordVideoTitle: string;
+  sendRecording: (type: string) => string;
+  voiceRecordingStarted: string;
+  videoRecordingStarted: string;
+  voiceAnswerSent: string;
+  videoAnswerSent: string;
+  recordingBlocked: string;
+  questionIdeasTitle: string;
+  skipButton: string;
+  openQuestionSuggestions: string;
+  replyKidLabel: string;
+  replyGrandmaLabel: string;
+  replyingTo: (name: string) => string;
+  mediaMessageLabel: string;
+  followUpTitle: string;
+  readingLatestStory: string;
+  useButton: string;
+  refreshButton: string;
+  checkingLogin: string;
+  loadingFamilyChat: string;
+  noFamilyConnected: string;
+  noFamilyConnectedHelp: string;
+  logInBeforeChat: string;
+  chatLoginHelp: string;
+  writingLabel: string;
+  exportBookButton: string;
+  writingBook: string;
+  bookDownloaded: string;
+  questionFromHome: string;
 };
 
 export const homeLanguages: HomeLanguage[] = ['en', 'es', 'ru', 'fr'];
@@ -148,6 +192,51 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     couldNotUpdateRequest: 'Could not update request.',
     requestCanceled: 'Request canceled.',
     couldNotCancelRequest: 'Could not cancel request.',
+    backButton: 'Back',
+    privateChatLabel: 'private chat',
+    onlineLabel: 'online',
+    awayLabel: 'away',
+    familyChatTitle: 'Family chat',
+    chatPhotoLabel: 'Chat photo',
+    changeChatPhotoLabel: 'Change chat photo',
+    chatPhotoUpdated: 'Chat photo updated for you.',
+    askGrandmaPlaceholder: 'Ask grandma something...',
+    answerPlaceholder: 'Write an answer or record your voice...',
+    sendButton: 'Send',
+    sendingLabel: 'Sending...',
+    micButton: 'Mic',
+    cameraButton: 'Camera',
+    recordVoiceTitle: 'Record voice',
+    recordVideoTitle: 'Record video',
+    sendRecording: (type) => `Send ${type}`,
+    voiceRecordingStarted: 'Voice recording started.',
+    videoRecordingStarted: 'Video recording started.',
+    voiceAnswerSent: 'Voice answer sent.',
+    videoAnswerSent: 'Video answer sent.',
+    recordingBlocked: 'Recording permission was blocked.',
+    questionIdeasTitle: 'Question ideas',
+    skipButton: 'Skip',
+    openQuestionSuggestions: 'Open question suggestions',
+    replyKidLabel: 'Kid',
+    replyGrandmaLabel: 'Grandma',
+    replyingTo: (name) => `Replying to ${name}`,
+    mediaMessageLabel: 'Media message',
+    followUpTitle: 'Follow-up from this chat',
+    readingLatestStory: 'Reading the latest story...',
+    useButton: 'Use',
+    refreshButton: 'Refresh',
+    checkingLogin: 'Checking your login...',
+    loadingFamilyChat: 'Loading family chat...',
+    noFamilyConnected: 'No family connected yet.',
+    noFamilyConnectedHelp:
+      'Send or accept a family request, then this becomes your real chat.',
+    logInBeforeChat: 'Log in before chat.',
+    chatLoginHelp: 'Use Google or email first, then connect your family.',
+    writingLabel: 'Writing...',
+    exportBookButton: 'Export book',
+    writingBook: 'Writing your book...',
+    bookDownloaded: 'Book PDF downloaded.',
+    questionFromHome: 'Question from home',
   },
   es: {
     languageName: 'Español',
@@ -225,6 +314,51 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     couldNotUpdateRequest: 'No se pudo actualizar la solicitud.',
     requestCanceled: 'Solicitud cancelada.',
     couldNotCancelRequest: 'No se pudo cancelar la solicitud.',
+    backButton: 'Volver',
+    privateChatLabel: 'chat privado',
+    onlineLabel: 'en línea',
+    awayLabel: 'ausente',
+    familyChatTitle: 'Chat familiar',
+    chatPhotoLabel: 'Foto del chat',
+    changeChatPhotoLabel: 'Cambiar foto del chat',
+    chatPhotoUpdated: 'Foto del chat actualizada para ti.',
+    askGrandmaPlaceholder: 'Pregúntale algo a la abuela...',
+    answerPlaceholder: 'Escribe una respuesta o graba tu voz...',
+    sendButton: 'Enviar',
+    sendingLabel: 'Enviando...',
+    micButton: 'Micrófono',
+    cameraButton: 'Cámara',
+    recordVoiceTitle: 'Grabar voz',
+    recordVideoTitle: 'Grabar video',
+    sendRecording: (type) => `Enviar ${type}`,
+    voiceRecordingStarted: 'Grabación de voz iniciada.',
+    videoRecordingStarted: 'Grabación de video iniciada.',
+    voiceAnswerSent: 'Respuesta de voz enviada.',
+    videoAnswerSent: 'Respuesta de video enviada.',
+    recordingBlocked: 'El permiso de grabación fue bloqueado.',
+    questionIdeasTitle: 'Ideas de preguntas',
+    skipButton: 'Saltar',
+    openQuestionSuggestions: 'Abrir ideas de preguntas',
+    replyKidLabel: 'Niño',
+    replyGrandmaLabel: 'Abuela',
+    replyingTo: (name) => `Respondiendo a ${name}`,
+    mediaMessageLabel: 'Mensaje multimedia',
+    followUpTitle: 'Seguimiento de este chat',
+    readingLatestStory: 'Leyendo la historia más reciente...',
+    useButton: 'Usar',
+    refreshButton: 'Actualizar',
+    checkingLogin: 'Revisando tu sesión...',
+    loadingFamilyChat: 'Cargando chat familiar...',
+    noFamilyConnected: 'Todavía no hay familia conectada.',
+    noFamilyConnectedHelp:
+      'Envía o acepta una solicitud familiar, y esto se convertirá en tu chat real.',
+    logInBeforeChat: 'Inicia sesión antes del chat.',
+    chatLoginHelp: 'Usa Google o email primero, luego conecta con tu familia.',
+    writingLabel: 'Escribiendo...',
+    exportBookButton: 'Exportar libro',
+    writingBook: 'Escribiendo tu libro...',
+    bookDownloaded: 'PDF del libro descargado.',
+    questionFromHome: 'Pregunta desde inicio',
   },
   ru: {
     languageName: 'Русский',
@@ -301,6 +435,51 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     couldNotUpdateRequest: 'Не удалось обновить запрос.',
     requestCanceled: 'Запрос отменен.',
     couldNotCancelRequest: 'Не удалось отменить запрос.',
+    backButton: 'Назад',
+    privateChatLabel: 'приватный чат',
+    onlineLabel: 'онлайн',
+    awayLabel: 'не в сети',
+    familyChatTitle: 'Семейный чат',
+    chatPhotoLabel: 'Фото чата',
+    changeChatPhotoLabel: 'Изменить фото чата',
+    chatPhotoUpdated: 'Фото чата обновлено для вас.',
+    askGrandmaPlaceholder: 'Спросите бабушку о чем-нибудь...',
+    answerPlaceholder: 'Напишите ответ или запишите голос...',
+    sendButton: 'Отправить',
+    sendingLabel: 'Отправка...',
+    micButton: 'Микрофон',
+    cameraButton: 'Камера',
+    recordVoiceTitle: 'Записать голос',
+    recordVideoTitle: 'Записать видео',
+    sendRecording: (type) => `Отправить ${type === 'audio' ? 'аудио' : 'видео'}`,
+    voiceRecordingStarted: 'Запись голоса началась.',
+    videoRecordingStarted: 'Запись видео началась.',
+    voiceAnswerSent: 'Голосовой ответ отправлен.',
+    videoAnswerSent: 'Видеоответ отправлен.',
+    recordingBlocked: 'Разрешение на запись заблокировано.',
+    questionIdeasTitle: 'Идеи вопросов',
+    skipButton: 'Пропустить',
+    openQuestionSuggestions: 'Открыть идеи вопросов',
+    replyKidLabel: 'Ребенок',
+    replyGrandmaLabel: 'Бабушка',
+    replyingTo: (name) => `Ответ для ${name}`,
+    mediaMessageLabel: 'Медиа-сообщение',
+    followUpTitle: 'Продолжение из этого чата',
+    readingLatestStory: 'Читаем последнюю историю...',
+    useButton: 'Использовать',
+    refreshButton: 'Обновить',
+    checkingLogin: 'Проверяем вход...',
+    loadingFamilyChat: 'Загрузка семейного чата...',
+    noFamilyConnected: 'Семья еще не подключена.',
+    noFamilyConnectedHelp:
+      'Отправьте или примите семейный запрос, и здесь появится настоящий чат.',
+    logInBeforeChat: 'Войдите перед чатом.',
+    chatLoginHelp: 'Сначала войдите через Google или email, затем подключите семью.',
+    writingLabel: 'Создаем...',
+    exportBookButton: 'Экспорт книги',
+    writingBook: 'Создаем вашу книгу...',
+    bookDownloaded: 'PDF книги скачан.',
+    questionFromHome: 'Вопрос с главной',
   },
   fr: {
     languageName: 'Français',
@@ -381,5 +560,50 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     couldNotUpdateRequest: 'Impossible de mettre à jour la demande.',
     requestCanceled: 'Demande annulée.',
     couldNotCancelRequest: 'Impossible d’annuler la demande.',
+    backButton: 'Retour',
+    privateChatLabel: 'chat privé',
+    onlineLabel: 'en ligne',
+    awayLabel: 'absent',
+    familyChatTitle: 'Chat familial',
+    chatPhotoLabel: 'Photo du chat',
+    changeChatPhotoLabel: 'Changer la photo du chat',
+    chatPhotoUpdated: 'Photo du chat mise à jour pour vous.',
+    askGrandmaPlaceholder: 'Posez une question à grand-mère...',
+    answerPlaceholder: 'Écrivez une réponse ou enregistrez votre voix...',
+    sendButton: 'Envoyer',
+    sendingLabel: 'Envoi...',
+    micButton: 'Micro',
+    cameraButton: 'Caméra',
+    recordVoiceTitle: 'Enregistrer la voix',
+    recordVideoTitle: 'Enregistrer une vidéo',
+    sendRecording: (type) => `Envoyer ${type === 'audio' ? 'l’audio' : 'la vidéo'}`,
+    voiceRecordingStarted: 'Enregistrement vocal commencé.',
+    videoRecordingStarted: 'Enregistrement vidéo commencé.',
+    voiceAnswerSent: 'Réponse vocale envoyée.',
+    videoAnswerSent: 'Réponse vidéo envoyée.',
+    recordingBlocked: 'L’autorisation d’enregistrement a été bloquée.',
+    questionIdeasTitle: 'Idées de questions',
+    skipButton: 'Ignorer',
+    openQuestionSuggestions: 'Ouvrir les idées de questions',
+    replyKidLabel: 'Enfant',
+    replyGrandmaLabel: 'Grand-mère',
+    replyingTo: (name) => `Réponse à ${name}`,
+    mediaMessageLabel: 'Message média',
+    followUpTitle: 'Relance depuis ce chat',
+    readingLatestStory: 'Lecture de la dernière histoire...',
+    useButton: 'Utiliser',
+    refreshButton: 'Actualiser',
+    checkingLogin: 'Vérification de la connexion...',
+    loadingFamilyChat: 'Chargement du chat familial...',
+    noFamilyConnected: 'Aucune famille connectée pour le moment.',
+    noFamilyConnectedHelp:
+      'Envoyez ou acceptez une demande familiale, puis ceci deviendra votre vrai chat.',
+    logInBeforeChat: 'Connectez-vous avant le chat.',
+    chatLoginHelp: 'Utilisez Google ou un e-mail d’abord, puis ajoutez votre famille.',
+    writingLabel: 'Écriture...',
+    exportBookButton: 'Exporter le livre',
+    writingBook: 'Écriture de votre livre...',
+    bookDownloaded: 'PDF du livre téléchargé.',
+    questionFromHome: 'Question depuis l’accueil',
   },
 };
