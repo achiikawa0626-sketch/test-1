@@ -1,12 +1,14 @@
 import type { ChatBook } from '../lib/chatBook';
+import type { TextBookTranslation } from '../lib/textBookTranslations';
 
 type MediaBookPreviewProps = {
   book: ChatBook;
   isDownloading: boolean;
+  text: TextBookTranslation;
   onDownload: () => void;
 };
 
-export function MediaBookPreview({ book, isDownloading, onDownload }: MediaBookPreviewProps) {
+export function MediaBookPreview({ book, isDownloading, text, onDownload }: MediaBookPreviewProps) {
   return (
     <article className="media-book-preview">
       <div className="media-book-cover">
@@ -16,7 +18,7 @@ export function MediaBookPreview({ book, isDownloading, onDownload }: MediaBookP
       </div>
 
       <button disabled={isDownloading} type="button" onClick={onDownload}>
-        {isDownloading ? 'Preparing book...' : 'Download book'}
+        {isDownloading ? text.preparingBook : text.downloadBook}
       </button>
 
       <div className="media-book-chapters">

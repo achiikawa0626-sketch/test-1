@@ -2,16 +2,20 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { MediaBookPreview } from '../components/MediaBookPreview';
 import { TextBookForm } from '../components/TextBookForm';
+import { useAppLanguage } from '../lib/appLanguage';
 import type { ChatBook } from '../lib/chatBook';
 import { downloadChatBookHtml } from '../lib/chatBookHtml';
 import { generateTextBook } from '../lib/textBook';
+import { textBookTranslations } from '../lib/textBookTranslations';
 
 export function MediaBookPage() {
+  const [language] = useAppLanguage();
+  const text = textBookTranslations[language];
   const [book, setBook] = useState<ChatBook>();
-  const [grandmaName, setGrandmaName] = useState('Grandma');
+  const [grandmaName, setGrandmaName] = useState(text.grandmaNamePlaceholder);
   const [message, setMessage] = useState('');
   const [sourceText, setSourceText] = useState('');
-  const [title, setTitle] = useState("Grandma's Story");
+  const [title, setTitle] = useState(text.bookTitlePlaceholder);
   const [isWriting, setIsWriting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -22,9 +26,9 @@ export function MediaBookPage() {
 
     try {
       setBook(await generateTextBook({ grandmaName, sourceText, title }));
-      setMessage("Book created from grandma's text.");
+      setMessage(text.createdMessage);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not create the book.');
+      setMessage(error instanceof Error ? error.message : text.createError);
     } finally {
       setIsWriting(false);
     }
@@ -44,18 +48,19 @@ export function MediaBookPage() {
   return (
     <main className="wide-container media-book-page">
       <header className="page-header">
-        <Link href="/">Back</Link>
-        <h1>Turn grandma's text into a book</h1>
-        <p>Paste what she wrote. The book will stay faithful to those words and details.</p>
+        <Link href="/">{text.backButton}</Link>
+        <h1>{text.pageTitle}</h1>
+        <p>{text.pageIntro}</p>
       </header>
 
       <section className="media-book-layout">
         <div className="card">
-          <h2>Source text</h2>
+          <h2>{text.sourceTitle}</h2>
           <TextBookForm
             grandmaName={grandmaName}
             isWriting={isWriting}
             sourceText={sourceText}
+            text={text}
             title={title}
             onGrandmaNameChange={setGrandmaName}
             onSourceTextChange={setSourceText}
@@ -69,12 +74,13 @@ export function MediaBookPage() {
           <MediaBookPreview
             book={book}
             isDownloading={isDownloading}
+            text={text}
             onDownload={() => void downloadBook()}
           />
         ) : (
           <div className="media-book-empty">
-            <h2>Your book will appear here</h2>
-            <p>The first draft will include chapters, story paragraphs, and source notes.</p>
+            <h2>{text.emptyTitle}</h2>
+            <p>{text.emptyText}</p>
           </div>
         )}
       </section>

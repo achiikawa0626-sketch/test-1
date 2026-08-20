@@ -1,9 +1,11 @@
 import type { FormEvent } from 'react';
+import type { TextBookTranslation } from '../lib/textBookTranslations';
 
 type TextBookFormProps = {
   grandmaName: string;
   isWriting: boolean;
   sourceText: string;
+  text: TextBookTranslation;
   title: string;
   onGrandmaNameChange: (name: string) => void;
   onSourceTextChange: (text: string) => void;
@@ -15,6 +17,7 @@ export function TextBookForm({
   grandmaName,
   isWriting,
   sourceText,
+  text,
   title,
   onGrandmaNameChange,
   onSourceTextChange,
@@ -29,35 +32,35 @@ export function TextBookForm({
   return (
     <form className="media-book-form" onSubmit={submitForm}>
       <label>
-        Book title
+        {text.bookTitleLabel}
         <input
           value={title}
-          placeholder="Grandma's Story"
+          placeholder={text.bookTitlePlaceholder}
           onChange={(event) => onTitleChange(event.target.value)}
         />
       </label>
 
       <label>
-        Grandma name
+        {text.grandmaNameLabel}
         <input
           value={grandmaName}
-          placeholder="Grandma"
+          placeholder={text.grandmaNamePlaceholder}
           onChange={(event) => onGrandmaNameChange(event.target.value)}
         />
       </label>
 
       <label>
-        Grandma's text
+        {text.grandmaTextLabel}
         <textarea
           className="text-book-source"
           value={sourceText}
-          placeholder="Paste exactly what grandma wrote here."
+          placeholder={text.grandmaTextPlaceholder}
           onChange={(event) => onSourceTextChange(event.target.value)}
         />
       </label>
 
       <button disabled={sourceText.trim().length < 40 || isWriting} type="submit">
-        {isWriting ? 'Writing book...' : 'Create book'}
+        {isWriting ? text.writingButton : text.createButton}
       </button>
     </form>
   );
