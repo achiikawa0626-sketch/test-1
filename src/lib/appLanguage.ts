@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { HomeLanguage } from './homeTranslations';
 
 const STORAGE_KEY = 'askgrandma-language';
-const FRENCH_DEFAULT_KEY = 'askgrandma-french-default-ready';
-const DEFAULT_LANGUAGE: HomeLanguage = 'fr';
+const RUSSIAN_DEFAULT_KEY = 'askgrandma-russian-default-ready';
+const DEFAULT_LANGUAGE: HomeLanguage = 'ru';
 const LANGUAGES: HomeLanguage[] = ['en', 'es', 'ru', 'fr', 'kk'];
 
 function isHomeLanguage(value: string | null): value is HomeLanguage {
@@ -13,8 +13,8 @@ function isHomeLanguage(value: string | null): value is HomeLanguage {
 function readStoredLanguage(): HomeLanguage {
   if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
 
-  if (window.localStorage.getItem(FRENCH_DEFAULT_KEY) !== 'yes') {
-    window.localStorage.setItem(FRENCH_DEFAULT_KEY, 'yes');
+  if (window.localStorage.getItem(RUSSIAN_DEFAULT_KEY) !== 'yes') {
+    window.localStorage.setItem(RUSSIAN_DEFAULT_KEY, 'yes');
     window.localStorage.setItem(STORAGE_KEY, DEFAULT_LANGUAGE);
     return DEFAULT_LANGUAGE;
   }
