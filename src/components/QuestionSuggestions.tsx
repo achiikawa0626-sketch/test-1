@@ -10,15 +10,23 @@ const suggestedQuestions = [
 ];
 
 type QuestionSuggestionsProps = {
+  followUpQuestions: string[];
+  isGeneratingFollowUp: boolean;
   text: HomeTranslation;
   onClose: () => void;
+  onDismissFollowUps: () => void;
   onPickQuestion: (question: string) => void;
+  onRefreshFollowUp: () => void;
 };
 
 export function QuestionSuggestions({
+  followUpQuestions,
+  isGeneratingFollowUp,
   text,
   onClose,
+  onDismissFollowUps,
   onPickQuestion,
+  onRefreshFollowUp,
 }: QuestionSuggestionsProps) {
   return (
     <div className="question-suggestions">
@@ -28,6 +36,37 @@ export function QuestionSuggestions({
           {text.skipButton}
         </button>
       </div>
+      {(isGeneratingFollowUp || followUpQuestions.length > 0) && (
+        <div className="question-suggestions__ai">
+          <div className="question-suggestions__ai-header">
+            <span>{text.followUpTitle}</span>
+            <div>
+              <button type="button" onClick={onRefreshFollowUp}>
+                {text.refreshButton}
+              </button>
+              <button type="button" onClick={onDismissFollowUps}>
+                {text.skipButton}
+              </button>
+            </div>
+          </div>
+          {isGeneratingFollowUp ? (
+            <p>{text.readingLatestStory}</p>
+          ) : (
+            <div className="question-suggestions__row">
+              {followUpQuestions.map((question) => (
+                <button
+                  className="question-suggestion question-suggestion--ai"
+                  type="button"
+                  key={question}
+                  onClick={() => onPickQuestion(question)}
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="question-suggestions__row">
         {suggestedQuestions.map((question) => (
           <button

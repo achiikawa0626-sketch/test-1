@@ -76,40 +76,14 @@ export function ChatComposer({
       )}
       {canAskQuestions && isQuestionPanelOpen && (
         <QuestionSuggestions
+          followUpQuestions={followUpQuestions}
+          isGeneratingFollowUp={isGeneratingFollowUp}
           text={text}
           onClose={() => setIsQuestionPanelOpen(false)}
+          onDismissFollowUps={onDismissFollowUps}
           onPickQuestion={pickQuestion}
+          onRefreshFollowUp={onRefreshFollowUp}
         />
-      )}
-      {canAskQuestions && (isGeneratingFollowUp || followUpQuestions.length > 0) && (
-        <div className="chat-follow-up">
-          <div>
-            <p>{text.followUpTitle}</p>
-            {isGeneratingFollowUp ? (
-              <span>{text.readingLatestStory}</span>
-            ) : (
-              <div className="chat-follow-up__chips">
-                {followUpQuestions.map((question) => (
-                  <button type="button" key={question} onClick={() => pickQuestion(question)}>
-                    {question}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {isGeneratingFollowUp ? (
-            <span className="chat-follow-up__spinner" aria-hidden="true" />
-          ) : (
-            <div className="chat-follow-up__actions">
-              <button type="button" onClick={onRefreshFollowUp}>
-                {text.refreshButton}
-              </button>
-              <button type="button" onClick={onDismissFollowUps}>
-                {text.skipButton}
-              </button>
-            </div>
-          )}
-        </div>
       )}
       <form
         className={canAskQuestions ? 'chat-compose-row' : 'chat-compose-row no-plus'}
