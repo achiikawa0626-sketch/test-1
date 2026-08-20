@@ -38,7 +38,10 @@ import {
 } from '../lib/directChatReactions';
 import type { DirectChatReaction } from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
-import { generateFollowUpQuestionsFromChat } from '../lib/followUpQuestion';
+import {
+  generateFollowUpQuestionsFromChat,
+  refreshFollowUpQuestionsFromChat,
+} from '../lib/followUpQuestion';
 import { homeTranslations } from '../lib/homeTranslations';
 import type { HomeTranslation } from '../lib/homeTranslations';
 import {
@@ -338,13 +341,16 @@ export function ChatPage() {
     }
   }
 
-  async function loadFollowUpQuestions() {
+  async function loadFollowUpQuestions(isRefresh = false) {
     if (!activeContact) return;
     setIsGeneratingFollowUp(true);
     setFollowUpQuestions([]);
 
     try {
-      setFollowUpQuestions(await generateFollowUpQuestionsFromChat(messages));
+      const nextQuestions = isRefresh
+        ? await refreshFollowUpQuestionsFromChat(messages)
+        : await generateFollowUpQuestionsFromChat(messages);
+      setFollowUpQuestions(nextQuestions);
     } finally {
       setIsGeneratingFollowUp(false);
     }
@@ -524,7 +530,7 @@ export function ChatPage() {
                   text={text}
                   onCancelReply={() => setReplyTo(undefined)}
                   onDismissFollowUps={dismissFollowUpQuestions}
-                  onRefreshFollowUp={() => void loadFollowUpQuestions()}
+                  onRefreshFollowUp={() => void loadFollowUpQuestions(true)}
                   onSendText={sendText}
                   onSendMedia={sendMedia}
                 />

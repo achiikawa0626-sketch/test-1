@@ -24,6 +24,11 @@ export async function generateFollowUpQuestionsFromChat(messages: DirectChatMess
   return questionsFromAnswer(answer, formatContext(messages, answer));
 }
 
+export async function refreshFollowUpQuestionsFromChat(messages: DirectChatMessage[]) {
+  const answer = findLatestStoryText(messages);
+  return questionsFromAnswer(answer, formatContext(messages, answer), Date.now());
+}
+
 export async function generateFollowUpQuestionFromChat(messages: DirectChatMessage[]) {
   const questions = await generateFollowUpQuestionsFromChat(messages);
   return questions[0] ?? starterFollowUps[0];
@@ -32,6 +37,7 @@ export async function generateFollowUpQuestionFromChat(messages: DirectChatMessa
 async function questionsFromAnswer(
   answer: DirectChatMessage | null,
   context = answer?.body ?? '',
+  refreshSeed?: number,
 ) {
   if (!answer) return starterFollowUps;
 
@@ -41,18 +47,19 @@ async function questionsFromAnswer(
         `Grandmother's latest message: ${cleanStoryText(answer.body)}`,
         'Recent chat context:',
         context,
+        refreshSeed ? `Refresh request: give a different angle than before. Seed ${refreshSeed}.` : '',
       ].join('\n'),
       system:
-        'Write 2-3 short follow-up questions a child can ask their grandmother. Use only facts from the latest message and recent chat context. Do not invent names, places, events, or relatives. Make each question warm, respectful, curious, and age-appropriate. Return valid JSON only: {"questions":["question"]}.',
+        'Read the grandmother message carefully, then write 2-3 specific follow-up questions a child can ask. Each question must be based on one concrete detail from the latest message or recent context. Avoid generic questions like "What happened after that?" unless there is no detail. Do not invent names, places, events, animals, or relatives. Keep each question short enough for a phone button, about 5-9 words. Preserve the chat language when possible. Return valid JSON only: {"questions":["question"]}.',
     },
   });
 
   if (error) {
-    return fallbackQuestions(answer.body);
+    return fallbackQuestions(answer.body, refreshSeed);
   }
 
   const questions = typeof data?.text === 'string' ? cleanQuestions(data.text) : [];
-  return questions.length > 0 ? questions : fallbackQuestions(answer.body);
+  return questions.length > 0 ? questions : fallbackQuestions(answer.body, refreshSeed);
 }
 
 async function loadLatestAnswer(contact: FamilyProfile) {
@@ -85,8 +92,12 @@ function formatContext(messages: DirectChatMessage[], answer: DirectChatMessage 
     .join('\n');
 }
 
-function fallbackQuestions(text: string) {
-  return safeFallbackQuestions(text)
+function fallbackQuestions(text: string, refreshSeed = 0) {
+  const questions = safeFallbackQuestions(text);
+  const offset = questions.length > 0 ? refreshSeed % questions.length : 0;
+  const rotatedQuestions = [...questions.slice(offset), ...questions.slice(0, offset)];
+
+  return rotatedQuestions
     .filter((question, index, questions) => questions.indexOf(question) === index)
     .slice(0, 3);
 }
@@ -94,6 +105,25 @@ function fallbackQuestions(text: string) {
 function safeFallbackQuestions(text: string) {
   const lowerText = text.toLowerCase();
 
+  if (hasAny(lowerText, ['игруш', 'toy'])) {
+    return [
+      lowerText.includes('потер') || lowerText.includes('lost')
+        ? 'Где ты потеряла игрушки?'
+        : 'Какие игрушки ты любила?',
+      'С кем ты играла?',
+      'Почему они были любимыми?',
+      'Что ты помнишь об игре?',
+    ];
+  }
+  if (hasAny(lowerText, ['играл', 'играла', 'play'])) {
+    return ['Во что ты играла?', 'С кем ты играла?', 'Где вы обычно играли?'];
+  }
+  if (hasAny(lowerText, ['плак', 'рыда', 'cry'])) {
+    return ['Кто тебя тогда утешил?', 'Что помогло тебе успокоиться?', 'Как ты это пережила?'];
+  }
+  if (hasAny(lowerText, ['7 лет', 'seven', '7 year'])) {
+    return ['Какой ты была в семь?', 'Что ты любила тогда?', 'Кто был рядом с тобой?'];
+  }
   if (lowerText.includes('birthday')) {
     return ['What else happened on that birthday?', 'How did you feel that day?', 'Who was with you?'];
   }
@@ -108,6 +138,10 @@ function safeFallbackQuestions(text: string) {
   }
 
   return starterFollowUps;
+}
+
+function hasAny(text: string, needles: string[]) {
+  return needles.some((needle) => text.includes(needle));
 }
 
 function isStoryText(text: string) {
