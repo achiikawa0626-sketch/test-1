@@ -53,17 +53,19 @@ export async function loadDirectChatMediaUrls(messages: DirectChatMessage[]) {
   const withMedia = messages.filter((message) => message.mediaPath && !message.mediaUrl);
   if (withMedia.length === 0) return messages;
 
-  const urls = await Promise.all(
-    withMedia.map(async (message) => ({
-      id: message.id,
-      url: message.mediaPath ? await createSignedUrl(message.mediaPath) : undefined,
-    })),
+  const paths = withMedia.flatMap((message) => (message.mediaPath ? [message.mediaPath] : []));
+  const { data, error } = await supabase.storage.from('chat-media').createSignedUrls(paths, 3600);
+  if (error) return messages;
+
+  const urlByPath = new Map(
+    (data ?? []).map((item) => [item.path, item.signedUrl ?? undefined]),
   );
-  const urlById = new Map(urls.map((item) => [item.id, item.url]));
 
   return messages.map((message) => ({
     ...message,
-    mediaUrl: urlById.get(message.id) ?? message.mediaUrl,
+    mediaUrl: message.mediaPath
+      ? urlByPath.get(message.mediaPath) ?? message.mediaUrl
+      : message.mediaUrl,
   }));
 }
 
@@ -123,12 +125,6 @@ async function toMessage(row: DirectChatRow, userId: string): Promise<DirectChat
     mediaPath: row.media_path ?? undefined,
     createdAt: row.created_at,
   };
-}
-
-async function createSignedUrl(path: string) {
-  const { data, error } = await supabase.storage.from('chat-media').createSignedUrl(path, 3600);
-  if (error) return undefined;
-  return data.signedUrl;
 }
 
 function oppositeMode(mode: AccountMode): AccountMode {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Auth } from '../components/Auth';
 import { AuthStatus } from '../components/AuthStatus';
@@ -89,20 +89,39 @@ export function ChatPage() {
   const [isUploadingContactAvatar, setIsUploadingContactAvatar] = useState(false);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [isGeneratingFollowUp, setIsGeneratingFollowUp] = useState(false);
+  const refreshState = useRef({ isLoading: false, queued: false });
+  const refreshTimer = useRef<number>();
+  const followUpState = useRef({
+    cacheKey: '',
+    isLoading: false,
+    questions: [] as string[],
+  });
 
   async function refreshMessages(contact = activeContact, showLoading = false) {
     if (!contact) return;
+    if (refreshState.current.isLoading) {
+      refreshState.current.queued = true;
+      return;
+    }
+
+    refreshState.current.isLoading = true;
     if (showLoading) setIsLoadingMessages(true);
 
     try {
       const nextMessages = await loadDirectChat(contact.id);
       const messageIds = nextMessages.map((item) => item.id);
-      setMessages(nextMessages);
-      saveCachedMessages(contact.id, nextMessages);
-      void refreshMediaUrls(nextMessages);
+      const mergedMessages = preserveMediaUrls(nextMessages, messages);
+      setMessages(mergedMessages);
+      saveCachedMessages(contact.id, mergedMessages);
+      void refreshMediaUrls(mergedMessages);
       void refreshMessageExtras(messageIds);
     } finally {
+      refreshState.current.isLoading = false;
       if (showLoading) setIsLoadingMessages(false);
+      if (refreshState.current.queued) {
+        refreshState.current.queued = false;
+        void refreshMessages(contact);
+      }
     }
   }
 
@@ -227,9 +246,12 @@ export function ChatPage() {
 
     const refreshActiveChat = () => {
       if (!isActive) return;
-      refreshMessages(activeContact).catch((error: unknown) => {
-        setMessage(error instanceof Error ? error.message : 'Could not refresh messages.');
-      });
+      window.clearTimeout(refreshTimer.current);
+      refreshTimer.current = window.setTimeout(() => {
+        refreshMessages(activeContact).catch((error: unknown) => {
+          setMessage(error instanceof Error ? error.message : 'Could not refresh messages.');
+        });
+      }, 600);
     };
 
     const channel = supabase
@@ -253,11 +275,12 @@ export function ChatPage() {
         refreshActiveChat,
       )
       .subscribe();
-    const backupTimer = window.setInterval(refreshActiveChat, 10_000);
+    const backupTimer = window.setInterval(refreshActiveChat, 30_000);
 
     return () => {
       isActive = false;
       window.clearInterval(backupTimer);
+      window.clearTimeout(refreshTimer.current);
       void supabase.removeChannel(channel);
     };
   }, [activeContact?.id, isLoggedIn]);
@@ -343,6 +366,14 @@ export function ChatPage() {
 
   async function loadFollowUpQuestions(isRefresh = false) {
     if (!activeContact) return;
+    const cacheKey = `${activeContact.id}:${latestAnswerId}`;
+    if (!isRefresh && followUpState.current.cacheKey === cacheKey) {
+      setFollowUpQuestions(followUpState.current.questions);
+      return;
+    }
+    if (followUpState.current.isLoading) return;
+
+    followUpState.current.isLoading = true;
     setIsGeneratingFollowUp(true);
     setFollowUpQuestions([]);
 
@@ -350,8 +381,10 @@ export function ChatPage() {
       const nextQuestions = isRefresh
         ? await refreshFollowUpQuestionsFromChat(messages)
         : await generateFollowUpQuestionsFromChat(messages);
+      followUpState.current = { cacheKey, isLoading: false, questions: nextQuestions };
       setFollowUpQuestions(nextQuestions);
     } finally {
+      followUpState.current.isLoading = false;
       setIsGeneratingFollowUp(false);
     }
   }
@@ -675,6 +708,14 @@ function mergeMediaUrls(current: DirectChatMessage[], next: DirectChatMessage[])
   return current.map((message) => ({
     ...message,
     mediaUrl: mediaUrlById.get(message.id) ?? message.mediaUrl,
+  }));
+}
+
+function preserveMediaUrls(next: DirectChatMessage[], current: DirectChatMessage[]) {
+  const mediaUrlById = new Map(current.map((message) => [message.id, message.mediaUrl]));
+  return next.map((message) => ({
+    ...message,
+    mediaUrl: message.mediaUrl ?? mediaUrlById.get(message.id),
   }));
 }
 

@@ -72,6 +72,7 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
         mediaType: message.mediaType,
         speaker,
         sentAt,
+        cacheKey: message.id,
       });
       const transcript = body || media.transcript;
       mediaReferences.push(media.reference);

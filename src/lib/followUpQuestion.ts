@@ -114,6 +114,7 @@ async function messageStoryText(message: DirectChatMessage) {
     mediaType: message.mediaType,
     speaker: 'Grandmother',
     sentAt,
+    cacheKey: message.id,
   });
 
   return media.transcript ?? '';

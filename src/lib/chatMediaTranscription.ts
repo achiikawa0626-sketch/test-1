@@ -12,18 +12,47 @@ export type ChatMediaSource = {
   transcript?: string;
 };
 
+const transcriptCache = new Map<string, string | undefined>();
+const pendingTranscripts = new Map<string, Promise<string | undefined>>();
+
 export async function readChatMediaSource(input: {
   url: string;
   mediaType: DirectChatMessage['mediaType'];
   speaker: string;
   sentAt: string;
+  cacheKey?: string;
 }): Promise<ChatMediaSource> {
   const mediaLabel = input.mediaType === 'audio' ? 'audio' : 'video';
   const reference = `${mediaLabel} from ${input.speaker} on ${input.sentAt}`;
+  const cacheKey = input.cacheKey ?? input.url;
+  const cachedTranscript = readCachedTranscript(cacheKey);
+  if (cachedTranscript !== null) return { reference, transcript: cachedTranscript };
+
   const mediaPart = await loadMediaPart(input.url, input.mediaType);
-  const transcript = mediaPart ? await transcribeMedia(mediaPart, mediaLabel) : undefined;
+  const transcript = mediaPart
+    ? await transcribeCachedMedia(cacheKey, mediaPart, mediaLabel)
+    : undefined;
 
   return { mediaPart, reference, transcript };
+}
+
+async function transcribeCachedMedia(
+  cacheKey: string,
+  mediaPart: AiMediaPart,
+  mediaLabel: string,
+) {
+  const pendingTranscript = pendingTranscripts.get(cacheKey);
+  if (pendingTranscript) return pendingTranscript;
+
+  const transcriptPromise = transcribeMedia(mediaPart, mediaLabel).then((transcript) => {
+    transcriptCache.set(cacheKey, transcript);
+    saveCachedTranscript(cacheKey, transcript);
+    pendingTranscripts.delete(cacheKey);
+    return transcript;
+  });
+
+  pendingTranscripts.set(cacheKey, transcriptPromise);
+  return transcriptPromise;
 }
 
 async function transcribeMedia(mediaPart: AiMediaPart, mediaLabel: string) {
@@ -68,4 +97,30 @@ async function blobToBase64(blob: Blob) {
   }
 
   return btoa(chunks.join(''));
+}
+
+function readCachedTranscript(cacheKey: string) {
+  if (transcriptCache.has(cacheKey)) return transcriptCache.get(cacheKey);
+
+  try {
+    const cached = sessionStorage.getItem(transcriptStorageKey(cacheKey));
+    if (cached === null) return null;
+    const transcript = cached || undefined;
+    transcriptCache.set(cacheKey, transcript);
+    return transcript;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedTranscript(cacheKey: string, transcript: string | undefined) {
+  try {
+    sessionStorage.setItem(transcriptStorageKey(cacheKey), transcript ?? '');
+  } catch {
+    return;
+  }
+}
+
+function transcriptStorageKey(cacheKey: string) {
+  return `ask-grandma-transcript:${cacheKey}`;
 }
