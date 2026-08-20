@@ -1,8 +1,10 @@
 export const appBase = import.meta.env.BASE_URL;
 export const routerBase = appBase === '/' ? '' : appBase.replace(/\/$/, '');
+export const isGitHubPagesBuild = routerBase !== '';
 
 export function appPath(path: string) {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  if (isGitHubPagesBuild) return cleanPath ? `${appBase}#/${cleanPath}` : `${appBase}#/`;
   return cleanPath ? `${appBase}${cleanPath}` : appBase;
 }
 
@@ -24,6 +26,6 @@ export function restoreGitHubPagesRoute() {
   window.history.replaceState(
     null,
     '',
-    `${routerBase}${routePath}${query}${window.location.hash}`,
+    `${routerBase}/#${routePath}${query}`,
   );
 }

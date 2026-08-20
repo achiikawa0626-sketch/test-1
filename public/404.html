@@ -20,8 +20,8 @@
         }
 
         var route = location.pathname.slice(repo.length).replace(/^\//, '');
-        var query = location.search ? '&' + location.search.slice(1) : '';
-        location.replace(location.origin + repo + '/?/' + route + query + location.hash);
+        var query = location.search || '';
+        location.replace(location.origin + repo + '/#/' + route + query);
       })();
     </script>
   </head>
