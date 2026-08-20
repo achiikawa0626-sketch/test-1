@@ -6,7 +6,7 @@ import type { ChatMediaType, ChatMessage } from '../lib/chat';
 import type { HomeTranslation } from '../lib/homeTranslations';
 
 type ChatComposerProps = {
-  followUpQuestion: string;
+  followUpQuestions: string[];
   mode: AccountMode;
   initialText: string;
   isGeneratingFollowUp: boolean;
@@ -14,14 +14,14 @@ type ChatComposerProps = {
   isSending: boolean;
   text: HomeTranslation;
   onCancelReply: () => void;
+  onDismissFollowUps: () => void;
   onRefreshFollowUp: () => void;
-  onSendFollowUp: (text: string) => Promise<void>;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType, transcript?: string) => Promise<void>;
 };
 
 export function ChatComposer({
-  followUpQuestion,
+  followUpQuestions,
   mode,
   initialText,
   isGeneratingFollowUp,
@@ -29,8 +29,8 @@ export function ChatComposer({
   isSending,
   text,
   onCancelReply,
+  onDismissFollowUps,
   onRefreshFollowUp,
-  onSendFollowUp,
   onSendText,
   onSendMedia,
 }: ChatComposerProps) {
@@ -63,11 +63,6 @@ export function ChatComposer({
     setIsQuestionPanelOpen(false);
   }
 
-  async function sendFollowUp() {
-    if (!followUpQuestion.trim() || isSending) return;
-    await onSendFollowUp(followUpQuestion);
-  }
-
   return (
     <section className="chat-composer">
       {replyTo && (
@@ -86,28 +81,31 @@ export function ChatComposer({
           onPickQuestion={pickQuestion}
         />
       )}
-      {canAskQuestions && (isGeneratingFollowUp || followUpQuestion) && (
+      {canAskQuestions && (isGeneratingFollowUp || followUpQuestions.length > 0) && (
         <div className="chat-follow-up">
           <div>
             <p>{text.followUpTitle}</p>
-            <span>
-              {isGeneratingFollowUp
-                ? text.readingLatestStory
-                : followUpQuestion}
-            </span>
+            {isGeneratingFollowUp ? (
+              <span>{text.readingLatestStory}</span>
+            ) : (
+              <div className="chat-follow-up__chips">
+                {followUpQuestions.map((question) => (
+                  <button type="button" key={question} onClick={() => pickQuestion(question)}>
+                    {question}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {isGeneratingFollowUp ? (
             <span className="chat-follow-up__spinner" aria-hidden="true" />
           ) : (
             <div className="chat-follow-up__actions">
-              <button type="button" onClick={() => pickQuestion(followUpQuestion)}>
-                {text.useButton}
-              </button>
-              <button type="button" onClick={() => void sendFollowUp()} disabled={isSending}>
-                {text.sendButton}
-              </button>
               <button type="button" onClick={onRefreshFollowUp}>
                 {text.refreshButton}
+              </button>
+              <button type="button" onClick={onDismissFollowUps}>
+                {text.skipButton}
               </button>
             </div>
           )}

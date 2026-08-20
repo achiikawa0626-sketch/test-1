@@ -3,7 +3,12 @@ import type { ChatBook, ChatBookChapter } from './chatBook';
 type PdfDocument = import('jspdf').jsPDF;
 type PageBox = { width: number; height: number; margin: number };
 
-export async function downloadChatBookPdf(book: ChatBook) {
+export type PdfDownload = {
+  url: string;
+  filename: string;
+};
+
+export async function downloadChatBookPdf(book: ChatBook): Promise<PdfDownload> {
   const { jsPDF } = await import('jspdf');
   const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
   const page = {
@@ -22,7 +27,7 @@ export async function downloadChatBookPdf(book: ChatBook) {
   });
 
   drawPageNumber(pdf, page);
-  pdf.save(`${slugify(book.title)}.pdf`);
+  return savePdfBlob(pdf, `${slugify(book.title)}.pdf`);
 }
 
 function drawChapter(pdf: PdfDocument, page: PageBox, y: number, chapter: ChatBookChapter) {
@@ -121,4 +126,19 @@ function slugify(value: string) {
     .replace(/^-|-$/g, '');
 
   return slug || 'chat-book';
+}
+
+function savePdfBlob(pdf: PdfDocument, filename: string): PdfDownload {
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noopener';
+  document.body.append(link);
+  link.click();
+  link.remove();
+
+  return { url, filename };
 }

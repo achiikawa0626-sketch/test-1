@@ -20,8 +20,8 @@ export function AuthStatus({ compact = false, labels = homeTranslations.en }: Au
   const [email, setEmail] = useState<string>();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email);
+    supabase.auth.getSession().then(({ data }) => {
+      setEmail(data.session?.user.email);
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {

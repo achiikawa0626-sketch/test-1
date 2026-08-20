@@ -38,7 +38,7 @@ import {
 } from '../lib/directChatReactions';
 import type { DirectChatReaction } from '../lib/directChatReactions';
 import type { FamilyProfile } from '../lib/familyConnections';
-import { generateFollowUpQuestionFromChat } from '../lib/followUpQuestion';
+import { generateFollowUpQuestionsFromChat } from '../lib/followUpQuestion';
 import { homeTranslations } from '../lib/homeTranslations';
 import type { HomeTranslation } from '../lib/homeTranslations';
 import {
@@ -56,6 +56,11 @@ type ChatPresence = {
   user_id?: string;
 };
 
+type ChatProfile = {
+  mode: AccountMode;
+  name: string;
+};
+
 export function ChatPage() {
   const [language] = useAppLanguage();
   const text = homeTranslations[language];
@@ -63,7 +68,7 @@ export function ChatPage() {
   const [contacts, setContacts] = useState<FamilyProfile[]>([]);
   const [activeContact, setActiveContact] = useState<FamilyProfile | undefined>(readInitialContact);
   const [messages, setMessages] = useState<DirectChatMessage[]>(readInitialMessages);
-  const [, setMessage] = useState('');
+  const [message, setMessage] = useState('');
   const [initialText] = useState(readInitialQuestion);
   const [messageActions, setMessageActions] = useState<DirectChatMessageActions>({});
   const [reactions, setReactions] = useState<Record<string, DirectChatReaction[]>>({});
@@ -79,7 +84,7 @@ export function ChatPage() {
   const [isExportingBook, setIsExportingBook] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploadingContactAvatar, setIsUploadingContactAvatar] = useState(false);
-  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [isGeneratingFollowUp, setIsGeneratingFollowUp] = useState(false);
 
   async function refreshMessages(contact = activeContact, showLoading = false) {
@@ -122,13 +127,18 @@ export function ChatPage() {
   }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsLoggedIn(Boolean(data.user));
+    supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      setIsLoggedIn(Boolean(user));
       setIsAuthReady(true);
-      setMyUserId(data.user?.id ?? '');
-      if (data.user) {
-        loadProfileMode(data.user.id).then(setMode).catch(() => undefined);
-        loadProfileName(data.user.id).then(setMyName).catch(() => undefined);
+      setMyUserId(user?.id ?? '');
+      if (user) {
+        loadChatProfile(user.id)
+          .then((profile) => {
+            setMode(profile.mode);
+            setMyName(profile.name);
+          })
+          .catch(() => undefined);
       }
     });
 
@@ -137,8 +147,12 @@ export function ChatPage() {
       setIsAuthReady(true);
       setMyUserId(session?.user.id ?? '');
       if (session?.user) {
-        loadProfileMode(session.user.id).then(setMode).catch(() => undefined);
-        loadProfileName(session.user.id).then(setMyName).catch(() => undefined);
+        loadChatProfile(session.user.id)
+          .then((profile) => {
+            setMode(profile.mode);
+            setMyName(profile.name);
+          })
+          .catch(() => undefined);
       }
     });
 
@@ -277,11 +291,12 @@ export function ChatPage() {
 
   useEffect(() => {
     if (mode !== 'kid' || !activeContact || !latestAnswerId) {
-      setFollowUpQuestion('');
+      setFollowUpQuestions([]);
+      setIsGeneratingFollowUp(false);
       return;
     }
 
-    loadFollowUpQuestion();
+    void loadFollowUpQuestions();
   }, [activeContact?.id, latestAnswerId, mode]);
 
   async function sendText(text: string) {
@@ -323,19 +338,20 @@ export function ChatPage() {
     }
   }
 
-  async function sendFollowUpQuestion(text: string) {
-    await sendText(text);
-    setFollowUpQuestion('');
+  async function loadFollowUpQuestions() {
+    if (!activeContact) return;
+    setIsGeneratingFollowUp(true);
+    setFollowUpQuestions([]);
+
+    try {
+      setFollowUpQuestions(await generateFollowUpQuestionsFromChat(messages));
+    } finally {
+      setIsGeneratingFollowUp(false);
+    }
   }
 
-  function loadFollowUpQuestion() {
-    setIsGeneratingFollowUp(true);
-    setFollowUpQuestion('');
-
-    window.setTimeout(() => {
-      setFollowUpQuestion(generateFollowUpQuestionFromChat(messages));
-      setIsGeneratingFollowUp(false);
-    }, 120);
+  function dismissFollowUpQuestions() {
+    setFollowUpQuestions([]);
   }
 
   async function copyMessage(text: string) {
@@ -421,6 +437,7 @@ export function ChatPage() {
         myName,
       });
       downloadChatBookHtml(book);
+      setMessage(text.bookDownloaded);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not make the book from this text.');
     } finally {
@@ -481,6 +498,7 @@ export function ChatPage() {
                 onExportBook={activeContact ? exportChatBook : undefined}
               />
             )}
+            {message && <p className="message">{message}</p>}
             {initialText && <InitialQuestion label={text.questionFromHome} text={initialText} />}
             {activeContact ? (
               <>
@@ -498,15 +516,15 @@ export function ChatPage() {
                 />
                 <ChatComposer
                   mode={mode}
-                  followUpQuestion={followUpQuestion}
+                  followUpQuestions={followUpQuestions}
                   initialText={initialText}
                   isGeneratingFollowUp={isGeneratingFollowUp}
                   replyTo={replyTo}
                   isSending={isSending}
                   text={text}
                   onCancelReply={() => setReplyTo(undefined)}
-                  onRefreshFollowUp={loadFollowUpQuestion}
-                  onSendFollowUp={sendFollowUpQuestion}
+                  onDismissFollowUps={dismissFollowUpQuestions}
+                  onRefreshFollowUp={() => void loadFollowUpQuestions()}
                   onSendText={sendText}
                   onSendMedia={sendMedia}
                 />
@@ -659,26 +677,18 @@ function mergeMediaUrls(current: DirectChatMessage[], next: DirectChatMessage[])
   }));
 }
 
-async function loadProfileMode(userId: string): Promise<AccountMode> {
+async function loadChatProfile(userId: string): Promise<ChatProfile> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('account_mode')
+    .select('account_mode, display_name')
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !data?.account_mode) return readAccountMode();
-  return data.account_mode as AccountMode;
-}
-
-async function loadProfileName(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error || !data) return 'You';
-  return data.display_name || 'You';
+  if (error || !data) return { mode: readAccountMode(), name: 'You' };
+  return {
+    mode: (data.account_mode as AccountMode | null) ?? readAccountMode(),
+    name: data.display_name || 'You',
+  };
 }
 
 function pinDurationMs(duration: string) {

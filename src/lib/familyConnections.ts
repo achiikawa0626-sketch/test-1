@@ -33,16 +33,24 @@ const requestSelects = [
   'id, requester_id, receiver_id, status, requester:profiles!family_requests_requester_id_fkey(id, email, display_name, username, account_mode, avatar_path), receiver:profiles!family_requests_receiver_id_fkey(id, email, display_name, username, account_mode, avatar_path)',
 ];
 type RequestStatusRow = Pick<RequestRow, 'id' | 'requester_id' | 'receiver_id' | 'status'>;
+type EnsuredProfile = {
+  userId: string;
+  email: string;
+};
+
+let ensuredProfile: EnsuredProfile | undefined;
 
 export async function ensureProfile() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new Error('Log in before finding family.');
-  const email = data.user.email ?? '';
-  const displayName = data.user.user_metadata.full_name ?? email.split('@')[0] ?? 'Family member';
+  const user = await readCurrentUser();
+  const email = user.email ?? '';
+
+  if (ensuredProfile?.userId === user.id && ensuredProfile.email === email) return user.id;
+
+  const displayName = user.user_metadata.full_name ?? email.split('@')[0] ?? 'Family member';
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('id', data.user.id)
+    .eq('id', user.id)
     .maybeSingle();
   const profileRequest = profile
     ? supabase
@@ -51,9 +59,9 @@ export async function ensureProfile() {
           email,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', data.user.id)
+        .eq('id', user.id)
     : supabase.from('profiles').insert({
-        id: data.user.id,
+        id: user.id,
         email,
         display_name: displayName,
         account_mode: readAccountMode(),
@@ -61,7 +69,8 @@ export async function ensureProfile() {
       });
   const { error: profileError } = await profileRequest;
   if (profileError) throw friendlyFamilyError(profileError.message);
-  return data.user.id;
+  ensuredProfile = { userId: user.id, email };
+  return user.id;
 }
 
 export async function searchFamilyProfiles(searchText: string) {
@@ -175,6 +184,15 @@ async function loadFamilyRequestRows(userId: string) {
 function isColumnError(message: string) {
   const lowerMessage = message.toLowerCase();
   return lowerMessage.includes('column') || lowerMessage.includes('schema cache');
+}
+
+async function readCurrentUser() {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session?.user) return sessionData.session.user;
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) throw new Error('Log in before finding family.');
+  return data.user;
 }
 
 function readProfile(profile: ProfileRow | ProfileRow[] | null) {

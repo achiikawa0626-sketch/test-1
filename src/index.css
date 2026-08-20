@@ -2352,6 +2352,27 @@ button.small { padding: 6px 10px; font-size: 14px; }
   line-height: 1.35;
 }
 
+.chat-follow-up__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-follow-up__chips button {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #fff7ec;
+  color: #315d67;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.chat-follow-up__chips button:hover {
+  background: #f6ebdb;
+}
+
 .chat-follow-up__actions {
   display: flex;
   flex-wrap: wrap;

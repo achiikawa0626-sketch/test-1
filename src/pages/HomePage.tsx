@@ -17,9 +17,9 @@ export function HomePage() {
   const text = homeTranslations[language];
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsLoggedIn(Boolean(data.user));
-      if (!data.user) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(Boolean(data.session?.user));
+      if (!data.session?.user) return;
 
       loadFamilyRequests()
         .then(setRequests)
