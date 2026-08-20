@@ -1,8 +1,10 @@
 import type { DirectChatMessage } from './directChat';
 import type { FamilyProfile } from './familyConnections';
 import type { HomeLanguage } from './homeTranslations';
+import { parseAiBookDraft } from './chatBookAiDraft';
 import { readChatMediaSource } from './chatMediaTranscription';
 import { buildBookFromText } from './storyBookBuilder';
+import { supabase } from './supabase';
 
 type ChatBookInput = {
   contact: FamilyProfile;
@@ -27,6 +29,7 @@ export type ChatBook = {
 
 type StorySource = {
   lines: string[];
+  mediaReferences: string[];
 };
 
 export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> {
@@ -40,6 +43,8 @@ export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> 
     authorLine: 'A family storybook made from shared memories',
   };
   const source = await buildSource(input, bookMessages);
+  const aiBook = await buildAiBook(base, source).catch(() => undefined);
+  if (aiBook) return aiBook;
 
   return buildBookFromText({
     ...base,
@@ -50,6 +55,7 @@ export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> 
 }
 
 async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]): Promise<StorySource> {
+  const mediaReferences: string[] = [];
   const lines = await Promise.all(
     messages.map(async (message) => {
       const speaker = message.isMine ? input.myName : input.contact.displayName;
@@ -68,14 +74,58 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
         sentAt,
       });
       const transcript = body || media.transcript;
+      mediaReferences.push(media.reference);
 
       return transcript
-        ? `${speaker} ${message.mediaType} transcript: ${transcript}`
+        ? `${speaker} shared this ${message.mediaType} memory: ${transcript}`
         : `${speaker} shared a ${message.mediaType}, but no transcript was available.`;
     }),
   );
 
-  return { lines };
+  return { lines, mediaReferences };
+}
+
+async function buildAiBook(
+  base: { title: string; authorLine: string },
+  source: StorySource,
+): Promise<ChatBook | undefined> {
+  const sourceText = source.lines.join('\n');
+  if (!sourceText.trim()) return undefined;
+
+  const { data, error } = await supabase.functions.invoke('ai', {
+    body: {
+      system: [
+        'You are a family storybook writer.',
+        'Turn chat text and audio/video transcripts into warm story scenes.',
+        'Use the supplied transcript as story material, like an Otter.ai or Google Recorder transcript that has been cleaned into prose.',
+        'Do not write raw labels like "Story transcript", "audio transcript", "the chat says", or URLs.',
+        'Do not invent new facts, names, places, animals, or events.',
+        'Return strict JSON only with this shape: {"overview":"...","chapters":[{"title":"...","prose":["paragraph"],"sourceNotes":["short source note"]}]}',
+      ].join(' '),
+      prompt: [
+        `Book title: ${base.title}`,
+        'Write 2-4 short chapters.',
+        'Make each chapter read like a real family memory, not a transcript.',
+        'If the source is in Russian, Kazakh, or mixed language, keep the meaning and write clear natural prose.',
+        '',
+        'Source material:',
+        sourceText,
+      ].join('\n'),
+    },
+  });
+
+  if (error || typeof data?.text !== 'string') return undefined;
+  const draft = parseAiBookDraft(data.text);
+
+  return {
+    ...base,
+    overview: draft.overview,
+    chapters: draft.chapters.map((chapter) => ({
+      ...chapter,
+      mediaReferences: source.mediaReferences,
+    })),
+    language: 'en',
+  };
 }
 
 function selectBookMessages(messages: DirectChatMessage[]) {
