@@ -998,6 +998,131 @@ button.small { padding: 6px 10px; font-size: 14px; }
   line-height: 1.45;
 }
 
+.media-book-page {
+  min-height: 100vh;
+}
+
+.media-book-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.media-book-form {
+  display: grid;
+  gap: 14px;
+}
+
+.media-book-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--soft);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.media-book-form input[type='file'] {
+  padding: 10px;
+}
+
+.text-book-source {
+  min-height: 260px;
+}
+
+.media-book-file {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--soft);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.media-book-empty,
+.media-book-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.media-book-empty {
+  display: grid;
+  gap: 10px;
+  padding: 28px;
+}
+
+.media-book-empty p {
+  color: var(--soft);
+  line-height: 1.5;
+}
+
+.media-book-preview {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.media-book-preview > button {
+  justify-self: start;
+}
+
+.media-book-cover {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 8px;
+  background: #fdf5e8;
+}
+
+.media-book-cover p {
+  color: var(--clay);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.media-book-cover h2 {
+  font-size: 34px;
+  line-height: 1.08;
+}
+
+.media-book-cover span {
+  color: var(--soft);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.media-book-chapters {
+  display: grid;
+  gap: 14px;
+}
+
+.media-book-chapter {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.media-book-chapter h3 {
+  font-size: 22px;
+}
+
+.media-book-chapter p,
+.media-book-chapter li {
+  line-height: 1.6;
+}
+
+.media-book-chapter ul {
+  display: grid;
+  gap: 5px;
+  padding-left: 20px;
+  color: var(--soft);
+  font-size: 14px;
+}
+
 .topic-pill {
   width: fit-content;
   padding: 6px 10px;
@@ -2469,6 +2594,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
 
   .family-connect,
   .family-search,
+  .media-book-layout,
   .question-chat-grid {
     grid-template-columns: 1fr;
   }

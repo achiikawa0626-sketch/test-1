@@ -39,8 +39,7 @@ export function QuestionsPage() {
     setAiQuestion('');
 
     try {
-      const nextQuestion = await generateFollowUpQuestion(nextContacts);
-      setAiQuestion(nextQuestion);
+      setAiQuestion(await generateFollowUpQuestion(nextContacts));
     } finally {
       setIsGeneratingAiQuestion(false);
     }

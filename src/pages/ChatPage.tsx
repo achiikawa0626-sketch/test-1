@@ -10,12 +10,19 @@ import { readAccountMode } from '../lib/accountMode';
 import type { AccountMode } from '../lib/accountMode';
 import { useAppLanguage } from '../lib/appLanguage';
 import type { ChatMediaType, ChatMessage } from '../lib/chat';
+import {
+  readCachedContact,
+  readCachedMessages,
+  saveCachedContact,
+  saveCachedMessages,
+} from '../lib/chatCache';
 import { generateChatBook } from '../lib/chatBook';
-import { downloadChatBookPdf } from '../lib/chatBookPdf';
+import { downloadChatBookHtml } from '../lib/chatBookHtml';
 import {
   deleteDirectChatMessage,
   loadChatContacts,
   loadDirectChat,
+  loadDirectChatMediaUrls,
   sendDirectChat,
 } from '../lib/directChat';
 import type { DirectChatMediaType, DirectChatMessage } from '../lib/directChat';
@@ -54,9 +61,9 @@ export function ChatPage() {
   const text = homeTranslations[language];
   const [mode, setMode] = useState<AccountMode>(readAccountMode);
   const [contacts, setContacts] = useState<FamilyProfile[]>([]);
-  const [activeContact, setActiveContact] = useState<FamilyProfile>();
-  const [messages, setMessages] = useState<DirectChatMessage[]>([]);
-  const [message, setMessage] = useState('');
+  const [activeContact, setActiveContact] = useState<FamilyProfile | undefined>(readInitialContact);
+  const [messages, setMessages] = useState<DirectChatMessage[]>(readInitialMessages);
+  const [, setMessage] = useState('');
   const [initialText] = useState(readInitialQuestion);
   const [messageActions, setMessageActions] = useState<DirectChatMessageActions>({});
   const [reactions, setReactions] = useState<Record<string, DirectChatReaction[]>>({});
@@ -83,10 +90,34 @@ export function ChatPage() {
       const nextMessages = await loadDirectChat(contact.id);
       const messageIds = nextMessages.map((item) => item.id);
       setMessages(nextMessages);
-      setMessageActions(await loadDirectChatMessageActions(messageIds));
-      setReactions(await loadDirectChatReactions(messageIds));
+      saveCachedMessages(contact.id, nextMessages);
+      void refreshMediaUrls(nextMessages);
+      void refreshMessageExtras(messageIds);
     } finally {
       if (showLoading) setIsLoadingMessages(false);
+    }
+  }
+
+  async function refreshMediaUrls(nextMessages: DirectChatMessage[]) {
+    try {
+      const messagesWithUrls = await loadDirectChatMediaUrls(nextMessages);
+      setMessages((current) => mergeMediaUrls(current, messagesWithUrls));
+    } catch {
+      return;
+    }
+  }
+
+  async function refreshMessageExtras(messageIds: string[]) {
+    try {
+      const [nextActions, nextReactions] = await Promise.all([
+        loadDirectChatMessageActions(messageIds),
+        loadDirectChatReactions(messageIds),
+      ]);
+      setMessageActions(nextActions);
+      setReactions(nextReactions);
+    } catch {
+      setMessageActions({});
+      setReactions({});
     }
   }
 
@@ -126,13 +157,25 @@ export function ChatPage() {
     loadChatContacts()
       .then((nextContacts) => {
         setContacts(nextContacts);
-        setActiveContact((contact) => contact ?? pickContact(nextContacts));
+        setActiveContact((contact) => {
+          const nextContact = pickContact(nextContacts, contact);
+          if (nextContact) saveCachedContact(nextContact);
+          return nextContact;
+        });
       })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : 'Could not load chat contacts.');
       })
       .finally(() => setIsLoadingContacts(false));
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!activeContact) return;
+    saveCachedContact(activeContact);
+
+    const cachedMessages = readCachedMessages(activeContact.id);
+    if (cachedMessages.length > 0) setMessages(cachedMessages);
+  }, [activeContact?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !activeContact) {
@@ -235,11 +278,10 @@ export function ChatPage() {
   useEffect(() => {
     if (mode !== 'kid' || !activeContact || !latestAnswerId) {
       setFollowUpQuestion('');
-      setIsGeneratingFollowUp(false);
       return;
     }
 
-    void loadFollowUpQuestion();
+    loadFollowUpQuestion();
   }, [activeContact?.id, latestAnswerId, mode]);
 
   async function sendText(text: string) {
@@ -281,21 +323,19 @@ export function ChatPage() {
     }
   }
 
-  async function loadFollowUpQuestion() {
-    if (!activeContact) return;
-    setIsGeneratingFollowUp(true);
-    setFollowUpQuestion('');
-
-    try {
-      setFollowUpQuestion(await generateFollowUpQuestionFromChat(activeContact, messages));
-    } finally {
-      setIsGeneratingFollowUp(false);
-    }
-  }
-
   async function sendFollowUpQuestion(text: string) {
     await sendText(text);
     setFollowUpQuestion('');
+  }
+
+  function loadFollowUpQuestion() {
+    setIsGeneratingFollowUp(true);
+    setFollowUpQuestion('');
+
+    window.setTimeout(() => {
+      setFollowUpQuestion(generateFollowUpQuestionFromChat(messages));
+      setIsGeneratingFollowUp(false);
+    }, 120);
   }
 
   async function copyMessage(text: string) {
@@ -369,16 +409,20 @@ export function ChatPage() {
   async function exportChatBook() {
     if (!activeContact || isExportingBook) return;
     setIsExportingBook(true);
+    setMessage('');
 
     try {
+      const bookMessages = await loadDirectChat(activeContact.id);
+      setMessages(bookMessages);
+      saveCachedMessages(activeContact.id, bookMessages);
       const book = await generateChatBook({
         contact: activeContact,
-        messages,
+        messages: bookMessages,
         myName,
       });
-      await downloadChatBookPdf(book);
+      downloadChatBookHtml(book);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not export this chat as a book.');
+      setMessage(error instanceof Error ? error.message : 'Could not make the book from this text.');
     } finally {
       setIsExportingBook(false);
     }
@@ -398,7 +442,11 @@ export function ChatPage() {
     mediaUrl: item.mediaUrl,
     createdAt: item.createdAt,
   }));
-  const isLoadingChat = isLoadingContacts || (Boolean(activeContact) && isLoadingMessages);
+  const isLoadingChat =
+    messages.length === 0 && (isLoadingContacts || (Boolean(activeContact) && isLoadingMessages));
+  const canShowChat =
+    (isAuthReady && isLoggedIn) || (!isAuthReady && Boolean(activeContact) && messages.length > 0);
+  const visibleContacts = contacts.length > 0 ? contacts : activeContact ? [activeContact] : [];
 
   return (
     <main className={`chat-page chat-page--${mode}`}>
@@ -416,9 +464,9 @@ export function ChatPage() {
       </header>
 
       <section className="chat-shell">
-        {!isAuthReady ? <ChatEmpty text={text.checkingLogin} /> : null}
+        {!isAuthReady && !canShowChat ? <ChatEmpty text={text.checkingLogin} /> : null}
         {isAuthReady && !isLoggedIn ? <ChatLogin text={text} /> : null}
-        {isAuthReady && isLoggedIn ? (
+        {canShowChat ? (
           isLoadingChat ? (
             <ChatLoading text={text.loadingFamilyChat} />
           ) : (
@@ -426,14 +474,13 @@ export function ChatPage() {
             {!isLoadingContacts && (
               <ContactStrip
                 activeContact={activeContact}
-                contacts={contacts}
+                contacts={visibleContacts}
                 isExportingBook={isExportingBook}
                 text={text}
                 onContactChange={setActiveContact}
                 onExportBook={activeContact ? exportChatBook : undefined}
               />
             )}
-            {message && <p className="message">{message}</p>}
             {initialText && <InitialQuestion label={text.questionFromHome} text={initialText} />}
             {activeContact ? (
               <>
@@ -458,7 +505,7 @@ export function ChatPage() {
                   isSending={isSending}
                   text={text}
                   onCancelReply={() => setReplyTo(undefined)}
-                  onRefreshFollowUp={() => void loadFollowUpQuestion()}
+                  onRefreshFollowUp={loadFollowUpQuestion}
                   onSendFollowUp={sendFollowUpQuestion}
                   onSendText={sendText}
                   onSendMedia={sendMedia}
@@ -583,13 +630,33 @@ function InitialQuestion({ label, text }: { label: string; text: string }) {
   );
 }
 
-function pickContact(contacts: FamilyProfile[]) {
+function pickContact(contacts: FamilyProfile[], fallback?: FamilyProfile) {
   const contactId = new URLSearchParams(window.location.search).get('contact');
-  return contacts.find((contact) => contact.id === contactId) ?? contacts[0];
+  return contacts.find((contact) => contact.id === contactId) ?? fallback ?? contacts[0];
 }
 
 function readInitialQuestion() {
   return new URLSearchParams(window.location.search).get('question') ?? '';
+}
+
+function readInitialContact() {
+  const cachedContact = readCachedContact();
+  const contactId = new URLSearchParams(window.location.search).get('contact');
+  if (!contactId || cachedContact?.id === contactId) return cachedContact;
+  return undefined;
+}
+
+function readInitialMessages() {
+  const contactId = new URLSearchParams(window.location.search).get('contact') ?? '';
+  return readCachedMessages(contactId);
+}
+
+function mergeMediaUrls(current: DirectChatMessage[], next: DirectChatMessage[]) {
+  const mediaUrlById = new Map(next.map((message) => [message.id, message.mediaUrl]));
+  return current.map((message) => ({
+    ...message,
+    mediaUrl: mediaUrlById.get(message.id) ?? message.mediaUrl,
+  }));
 }
 
 async function loadProfileMode(userId: string): Promise<AccountMode> {

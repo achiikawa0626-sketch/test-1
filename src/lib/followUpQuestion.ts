@@ -1,110 +1,100 @@
 import { loadDirectChat } from './directChat';
 import type { DirectChatMessage } from './directChat';
 import type { FamilyProfile } from './familyConnections';
-import { disableOptionalFeature, isOptionalFeatureEnabled } from './optionalFeatureFlags';
-import { supabase } from './supabase';
-import { isMissingSupabaseResource } from './supabaseErrors';
 
-const AI_FUNCTION = 'ai-function';
+const starterFollowUps = [
+  'What happened after that?',
+  'How did you feel in that moment?',
+  'What do you remember most clearly about that day?',
+];
+
+const stopWords = new Set([
+  'about',
+  'after',
+  'again',
+  'birthday',
+  'could',
+  'father',
+  'favorite',
+  'gifted',
+  'grandma',
+  'happened',
+  'mother',
+  'really',
+  'story',
+  'their',
+  'there',
+  'thing',
+  'today',
+  'was',
+  'were',
+  'when',
+  'with',
+  'would',
+  'your',
+]);
 
 export async function generateFollowUpQuestion(contacts: FamilyProfile[]) {
-  const answer = await findLatestGrandparentAnswer(contacts);
-  return generateQuestionFromAnswer(answer);
-}
-
-export async function generateFollowUpQuestionFromChat(
-  contact: FamilyProfile,
-  messages: DirectChatMessage[],
-) {
-  const answerIndex = findLatestAnswerIndex(messages);
-  if (answerIndex === -1) return '';
-
-  const answer = messages[answerIndex];
-  return generateQuestionFromAnswer({
-    body: answer.body.trim(),
-    contactName: contact.displayName,
-    context: formatContext(messages.slice(Math.max(0, answerIndex - 5), answerIndex + 1)),
-    createdAt: answer.createdAt,
-  });
-}
-
-async function generateQuestionFromAnswer(
-  answer: {
-    body: string;
-    contactName: string;
-    context: string;
-    createdAt: string;
-  } | null,
-) {
-  if (!answer) return '';
-  if (!isOptionalFeatureEnabled(AI_FUNCTION)) return '';
-
-  const { data, error } = await supabase.functions.invoke('ai', {
-    body: {
-      prompt: [
-        `Grandparent: ${answer.contactName}`,
-        `Their latest answer: ${answer.body}`,
-        `Recent chat:`,
-        answer.context,
-      ].join('\n'),
-      system:
-        'Write one short, warm follow-up question a child can ask their grandparent. Use only details that appear in the latest answer or recent chat. Do not invent names, places, events, or family members. Mention one real detail when there is enough detail. If the answer is too short, ask a simple question that helps them tell more. Keep it natural for a family chat. Return only the question.',
-    },
-  });
-
-  if (error) {
-    if (isMissingSupabaseResource(error.message) || error.message.includes('Failed to fetch')) {
-      disableOptionalFeature(AI_FUNCTION);
-    }
-
-    return '';
-  }
-  return typeof data?.text === 'string' ? cleanQuestion(data.text) : '';
-}
-
-async function findLatestGrandparentAnswer(contacts: FamilyProfile[]) {
-  const answers = await Promise.all(
-    contacts.map(async (contact) => {
-      const messages = await loadDirectChat(contact.id);
-      const answerIndex = findLatestAnswerIndex(messages);
-      if (answerIndex === -1) return null;
-
-      const answer = messages[answerIndex];
-      return {
-        body: answer.body.trim(),
-        contactName: contact.displayName,
-        context: formatContext(messages.slice(Math.max(0, answerIndex - 5), answerIndex + 1)),
-        createdAt: answer.createdAt,
-      };
-    }),
-  );
-
-  return answers
+  const answers = await Promise.all(contacts.map(loadLatestAnswer));
+  const latestAnswer = answers
     .filter((answer) => answer !== null)
-    .sort((first, second) => second.createdAt.localeCompare(first.createdAt))[0] ?? null;
+    .sort((first, second) => second.createdAt.localeCompare(first.createdAt))[0];
+
+  return latestAnswer ? questionFromText(latestAnswer.body) : starterFollowUps[0];
 }
 
-function findLatestAnswerIndex(messages: DirectChatMessage[]) {
+export function generateFollowUpQuestionFromChat(messages: DirectChatMessage[]) {
+  const answer = findLatestStoryText(messages);
+  return answer ? questionFromText(answer.body) : starterFollowUps[0];
+}
+
+async function loadLatestAnswer(contact: FamilyProfile) {
+  const messages = await loadDirectChat(contact.id);
+  return findLatestStoryText(messages);
+}
+
+function findLatestStoryText(messages: DirectChatMessage[]) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
-    if (!message.isMine && message.body.trim()) return index;
+    if (isStoryText(message.body)) return message;
   }
 
-  return -1;
+  return null;
 }
 
-function formatContext(messages: DirectChatMessage[]) {
-  return messages
-    .map((message) => {
-      const speaker = message.isMine ? 'Child' : 'Grandparent';
-      return `${speaker}: ${message.body.trim() || `[${message.mediaType ?? 'media'} message, no transcript]`}`;
-    })
-    .join('\n');
+function questionFromText(text: string) {
+  const lowerText = text.toLowerCase();
+  const object = findStoryObject(text);
+
+  if (object) {
+    if (lowerText.includes('gift')) return `What happened to the ${object} after you got it?`;
+    if (lowerText.includes('lost')) return `Did you ever find the ${object} again?`;
+    if (lowerText.includes('birthday')) return `Do you still remember what happened to the ${object}?`;
+    return `What happened to the ${object} after that?`;
+  }
+
+  if (lowerText.includes('birthday')) return 'What else happened on that birthday?';
+  if (lowerText.includes('father')) return 'What do you remember about your father that day?';
+  if (lowerText.includes('mother')) return 'What do you remember about your mother that day?';
+  if (lowerText.includes('school')) return 'What was school like for you then?';
+
+  return starterFollowUps[Math.floor(Math.random() * starterFollowUps.length)];
 }
 
-function cleanQuestion(text: string) {
-  return text
-    .replace(/^["']|["']$/g, '')
-    .trim()
-    .slice(0, 180);
+function findStoryObject(text: string) {
+  const afterGift = text.match(/\b(?:gifted|gave|bought|made)\s+(?:me\s+)?(?:a|an|the)?\s*([a-z][a-z-]+)/i)?.[1];
+  if (afterGift && !stopWords.has(afterGift.toLowerCase())) return afterGift.toLowerCase();
+
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !stopWords.has(word));
+
+  return words[words.length - 1] ?? '';
+}
+
+function isStoryText(text: string) {
+  const cleanText = text.trim();
+  return cleanText.length > 20 && !cleanText.includes('?') && !cleanText.toLowerCase().startsWith('story transcript:');
 }

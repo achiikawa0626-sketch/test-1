@@ -12,6 +12,7 @@ export type DirectChatMessage = {
   isMine: boolean;
   body: string;
   mediaType?: DirectChatMediaType;
+  mediaPath?: string;
   mediaUrl?: string;
   createdAt: string;
 };
@@ -40,10 +41,30 @@ export async function loadDirectChat(contactId: string) {
     .or(
       `and(sender_id.eq.${userId},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${userId})`,
     )
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false })
+    .limit(40);
 
   if (error) throw friendlyDirectChatError(error.message);
-  return Promise.all(((data ?? []) as DirectChatRow[]).map((row) => toMessage(row, userId)));
+  const rows = ((data ?? []) as DirectChatRow[]).reverse();
+  return Promise.all(rows.map((row) => toMessage(row, userId)));
+}
+
+export async function loadDirectChatMediaUrls(messages: DirectChatMessage[]) {
+  const withMedia = messages.filter((message) => message.mediaPath && !message.mediaUrl);
+  if (withMedia.length === 0) return messages;
+
+  const urls = await Promise.all(
+    withMedia.map(async (message) => ({
+      id: message.id,
+      url: message.mediaPath ? await createSignedUrl(message.mediaPath) : undefined,
+    })),
+  );
+  const urlById = new Map(urls.map((item) => [item.id, item.url]));
+
+  return messages.map((message) => ({
+    ...message,
+    mediaUrl: urlById.get(message.id) ?? message.mediaUrl,
+  }));
 }
 
 export async function sendDirectChat(input: {
@@ -99,7 +120,7 @@ async function toMessage(row: DirectChatRow, userId: string): Promise<DirectChat
     isMine,
     body: row.body ?? '',
     mediaType: row.media_type ?? undefined,
-    mediaUrl: row.media_path ? await createSignedUrl(row.media_path) : undefined,
+    mediaPath: row.media_path ?? undefined,
     createdAt: row.created_at,
   };
 }

@@ -6,6 +6,7 @@ import { AskPage } from './pages/AskPage';
 import { AnswerPage } from './pages/AnswerPage';
 import { ChatPage } from './pages/ChatPage';
 import { MemoriesPage } from './pages/MemoriesPage';
+import { MediaBookPage } from './pages/MediaBookPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { FindFamilyPage } from './pages/FindFamilyPage';
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/chat" component={ChatPage} />
       <Route path="/chat/:memoryId" component={ChatPage} />
       <Route path="/memories" component={MemoriesPage} />
+      <Route path="/media-book" component={MediaBookPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/find-family" component={FindFamilyPage} />

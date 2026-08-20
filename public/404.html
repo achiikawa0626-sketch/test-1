@@ -5,10 +5,16 @@
     <title>AskGrandma</title>
     <script>
       (function () {
-        var repo = '/test-1';
         var location = window.location;
+        var parts = location.pathname.split('/').filter(Boolean);
+        var repo = parts.length > 0 ? '/' + parts[0] : '';
 
-        if (location.pathname.indexOf(repo) !== 0) {
+        if (!repo) {
+          location.replace(location.origin + '/');
+          return;
+        }
+
+        if (location.pathname.indexOf(repo + '/') !== 0 && location.pathname !== repo) {
           location.replace(location.origin + repo + '/');
           return;
         }
