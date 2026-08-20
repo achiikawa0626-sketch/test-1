@@ -14,7 +14,6 @@ type QuestionSuggestionsProps = {
   isGeneratingFollowUp: boolean;
   text: HomeTranslation;
   onClose: () => void;
-  onDismissFollowUps: () => void;
   onPickQuestion: (question: string) => void;
   onRefreshFollowUp: () => void;
 };
@@ -24,7 +23,6 @@ export function QuestionSuggestions({
   isGeneratingFollowUp,
   text,
   onClose,
-  onDismissFollowUps,
   onPickQuestion,
   onRefreshFollowUp,
 }: QuestionSuggestionsProps) {
@@ -43,9 +41,6 @@ export function QuestionSuggestions({
             <div>
               <button type="button" onClick={onRefreshFollowUp}>
                 {text.refreshButton}
-              </button>
-              <button type="button" onClick={onDismissFollowUps}>
-                {text.skipButton}
               </button>
             </div>
           </div>

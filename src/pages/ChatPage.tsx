@@ -356,10 +356,6 @@ export function ChatPage() {
     }
   }
 
-  function dismissFollowUpQuestions() {
-    setFollowUpQuestions([]);
-  }
-
   async function copyMessage(text: string) {
     await navigator.clipboard.writeText(text);
     setMessage('Message copied.');
@@ -529,7 +525,6 @@ export function ChatPage() {
                   isSending={isSending}
                   text={text}
                   onCancelReply={() => setReplyTo(undefined)}
-                  onDismissFollowUps={dismissFollowUpQuestions}
                   onRefreshFollowUp={() => void loadFollowUpQuestions(true)}
                   onSendText={sendText}
                   onSendMedia={sendMedia}

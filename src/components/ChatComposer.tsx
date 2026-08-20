@@ -14,7 +14,6 @@ type ChatComposerProps = {
   isSending: boolean;
   text: HomeTranslation;
   onCancelReply: () => void;
-  onDismissFollowUps: () => void;
   onRefreshFollowUp: () => void;
   onSendText: (text: string) => Promise<void>;
   onSendMedia: (blob: Blob, mediaType: ChatMediaType, transcript?: string) => Promise<void>;
@@ -29,7 +28,6 @@ export function ChatComposer({
   isSending,
   text,
   onCancelReply,
-  onDismissFollowUps,
   onRefreshFollowUp,
   onSendText,
   onSendMedia,
@@ -80,7 +78,6 @@ export function ChatComposer({
           isGeneratingFollowUp={isGeneratingFollowUp}
           text={text}
           onClose={() => setIsQuestionPanelOpen(false)}
-          onDismissFollowUps={onDismissFollowUps}
           onPickQuestion={pickQuestion}
           onRefreshFollowUp={onRefreshFollowUp}
         />
