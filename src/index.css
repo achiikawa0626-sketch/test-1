@@ -1712,6 +1712,11 @@ button.small { padding: 6px 10px; font-size: 14px; }
   gap: 8px;
   min-width: 0;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chat-contact-strip__list::-webkit-scrollbar {
+  display: none;
 }
 
 .chat-contact {
@@ -2446,8 +2451,13 @@ button.small { padding: 6px 10px; font-size: 14px; }
 }
 
 .chat-recording-send {
-  background: #6fc9ba;
+  background: #315d67;
   color: #fff;
+  box-shadow: 0 5px 12px rgba(49, 93, 103, 0.28);
+}
+
+.chat-recording-send:hover {
+  background: #244a53;
 }
 
 .chat-recorder p {
@@ -2459,10 +2469,28 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .question-suggestions {
   display: grid;
   gap: 7px;
+  max-height: min(52vh, 430px);
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(49, 93, 103, 0.35) transparent;
+  scrollbar-width: thin;
+}
+
+.question-suggestions::-webkit-scrollbar {
+  width: 6px;
+}
+
+.question-suggestions::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.question-suggestions::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(49, 93, 103, 0.28);
 }
 
 .question-suggestions__ai {
