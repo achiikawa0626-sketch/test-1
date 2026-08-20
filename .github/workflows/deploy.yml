@@ -41,6 +41,12 @@ jobs:
       - name: Build for GitHub Pages
         run: npm run build -- --base=/${{ github.event.repository.name }}/
 
+      - name: Add legacy asset filenames
+        shell: bash
+        run: |
+          cp "$(find dist/assets -maxdepth 1 -name 'index-*.css' | head -n 1)" dist/assets/index.css
+          cp "$(find dist/assets -maxdepth 1 -name 'index-*.js' | head -n 1)" dist/assets/index.js
+
       - uses: actions/configure-pages@v5
         with:
           enablement: true
