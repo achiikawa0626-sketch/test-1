@@ -61,7 +61,7 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
       const speaker = message.isMine ? input.myName : input.contact.displayName;
       const body = cleanTranscript(message.body);
 
-      if (!message.mediaType || !message.mediaUrl) return `${speaker}: ${body}`;
+      if (!message.mediaType || !message.mediaUrl) return body;
 
       const sentAt = new Intl.DateTimeFormat('en', {
         dateStyle: 'medium',
@@ -77,8 +77,8 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
       mediaReferences.push(media.reference);
 
       return transcript
-        ? `${speaker} shared this ${message.mediaType} memory: ${transcript}`
-        : `${speaker} shared a ${message.mediaType}, but no transcript was available.`;
+        ? transcript
+        : `A ${message.mediaType} memory was shared, but no transcript was available.`;
     }),
   );
 
@@ -98,7 +98,7 @@ async function buildAiBook(
         'You are a family storybook writer.',
         'Turn chat text and audio/video transcripts into warm story scenes.',
         'Use the supplied transcript as story material, like an Otter.ai or Google Recorder transcript that has been cleaned into prose.',
-        'Do not write raw labels like "Story transcript", "audio transcript", "the chat says", or URLs.',
+        'Do not include usernames, speaker names, raw chat labels, reply labels, "Story transcript", "audio transcript", "the chat says", or URLs.',
         'Do not invent new facts, names, places, animals, or events.',
         'Return strict JSON only with this shape: {"overview":"...","chapters":[{"title":"...","prose":["paragraph"],"sourceNotes":["short source note"]}]}',
       ].join(' '),
@@ -144,5 +144,6 @@ function cleanTranscript(text: string) {
   return text
     .trim()
     .replace(/^Story transcript:\s*/i, '')
+    .replace(/^Reply to [^:]+:\s*"[^"]*"\s*/i, '')
     .replace(/\s+/g, ' ');
 }
