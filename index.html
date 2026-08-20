@@ -12,7 +12,7 @@
         var query = parts.length ? '?' + parts.join('&') : '';
         var basePath = location.pathname.replace(/\/$/, '');
 
-        window.history.replaceState(null, '', basePath + '/' + route + query + location.hash);
+        window.history.replaceState(null, '', basePath + '/#/' + route + query);
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
