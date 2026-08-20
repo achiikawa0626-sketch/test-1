@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AskGrandma Chat</title>
+    <script>
+      (function () {
+        var location = window.location;
+        var path = location.pathname.replace(/\/chat\/?$/, '/');
+        location.replace(location.origin + path + '#/chat' + location.search + location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Opening chat...</p>
+  </body>
+</html>
