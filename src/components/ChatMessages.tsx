@@ -106,7 +106,7 @@ export function ChatMessages({
               <p className="chat-bubble__role">
                 {message.senderName ?? (message.senderRole === 'kid' ? 'You' : 'Grandma')}
               </p>
-              {message.body && <p className="chat-bubble__text">{message.body}</p>}
+              {message.body && <p className="chat-bubble__text">{displayMessageBody(message.body)}</p>}
               {message.mediaType === 'audio' && message.mediaUrl && (
                 <audio src={message.mediaUrl} controls />
               )}
@@ -145,4 +145,8 @@ export function ChatMessages({
       })}
     </div>
   );
+}
+
+function displayMessageBody(body: string) {
+  return body.replace(/^Story transcript:\s*/i, '').trim();
 }

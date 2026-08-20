@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMediaType } from '../lib/chat';
 import type { HomeTranslation } from '../lib/homeTranslations';
+import { cleanRecordedTranscript } from '../lib/transcriptCleanup';
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -111,7 +112,8 @@ export function ChatRecorder({ allowedTypes, isSending, text, onSend }: ChatReco
 
     recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: `${mediaType}/webm` });
-      await onSend(blob, mediaType, transcriptRef.current.trim());
+      const transcript = await cleanRecordedTranscript(transcriptRef.current);
+      await onSend(blob, mediaType, transcript);
       setMessage(mediaType === 'audio' ? text.voiceAnswerSent : text.videoAnswerSent);
     };
     recognitionRef.current?.stop();
