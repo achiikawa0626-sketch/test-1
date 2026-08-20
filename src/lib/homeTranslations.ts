@@ -1,4 +1,4 @@
-export type HomeLanguage = 'en' | 'es' | 'ru' | 'fr';
+export type HomeLanguage = 'en' | 'es' | 'ru' | 'fr' | 'kk';
 
 export type HomeTranslation = {
   languageName: string;
@@ -7,6 +7,7 @@ export type HomeTranslation = {
   loginButton: string;
   findFamilyButton: string;
   chatButton: string;
+  textBookButton: string;
   authNotLoggedIn: string;
   authKidParent: string;
   authGrandparent: string;
@@ -118,7 +119,7 @@ export type HomeTranslation = {
   yesterdayLabel: string;
 };
 
-export const homeLanguages: HomeLanguage[] = ['en', 'es', 'ru', 'fr'];
+export const homeLanguages: HomeLanguage[] = ['en', 'es', 'ru', 'fr', 'kk'];
 
 export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
   en: {
@@ -129,6 +130,7 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     loginButton: 'Log in or create account',
     findFamilyButton: 'Find family',
     chatButton: 'Open chat',
+    textBookButton: 'Make a book from text',
     authNotLoggedIn: 'Not logged in',
     authKidParent: 'Kid/parent',
     authGrandparent: 'Grandparent',
@@ -252,6 +254,7 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     loginButton: 'Iniciar sesión o crear cuenta',
     findFamilyButton: 'Buscar familia',
     chatButton: 'Abrir chat',
+    textBookButton: 'Crear un libro desde texto',
     authNotLoggedIn: 'No has iniciado sesión',
     authKidParent: 'Niño/padre',
     authGrandparent: 'Abuelo/a',
@@ -377,6 +380,7 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     loginButton: 'Войти или создать аккаунт',
     findFamilyButton: 'Найти семью',
     chatButton: 'Открыть чат',
+    textBookButton: 'Создать книгу из текста',
     authNotLoggedIn: 'Вы не вошли',
     authKidParent: 'Ребенок/родитель',
     authGrandparent: 'Бабушка/дедушка',
@@ -501,6 +505,7 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     loginButton: 'Se connecter ou créer un compte',
     findFamilyButton: 'Trouver la famille',
     chatButton: 'Ouvrir le chat',
+    textBookButton: 'Créer un livre depuis un texte',
     authNotLoggedIn: 'Non connecté',
     authKidParent: 'Enfant/parent',
     authGrandparent: 'Grand-parent',
@@ -620,5 +625,130 @@ export const homeTranslations: Record<HomeLanguage, HomeTranslation> = {
     dateLocale: 'fr',
     todayLabel: 'Aujourd’hui',
     yesterdayLabel: 'Hier',
+  },
+  kk: {
+    languageName: 'Қазақша',
+    heroTitle: 'Отбасы оқиғаларын жоғалып кетпей тұрып сақтаңыз.',
+    heroText:
+      'Кіріңіз, профиліңізді бір рет реттеңіз, отбасыңызды қосыңыз және сұрақтар мен жауаптарды бір жеке чатта сақтаңыз.',
+    loginButton: 'Кіру немесе аккаунт ашу',
+    findFamilyButton: 'Отбасын табу',
+    chatButton: 'Чатты ашу',
+    textBookButton: 'Мәтіннен кітап жасау',
+    authNotLoggedIn: 'Кірмегенсіз',
+    authKidParent: 'Бала/ата-ана',
+    authGrandparent: 'Ата-әже',
+    profileLink: 'Профиль',
+    familyPreviewLabel: 'Сіздің отбасыңыз',
+    startLabel: 'Бастау',
+    signedOutTitle: 'Отбасы оқиғаларыңыз осында сақталады.',
+    signedOutText:
+      'Алдымен кіріңіз, содан кейін отбасы аккаунттарын қосып, жеке чат бастаңыз.',
+    signedOutButton: 'Кіру',
+    familyReadyTitle: 'Қазір сөйлесе алатын адамдар.',
+    familyEmptyTitle: 'Отбасы шеңберіңізді құрыңыз.',
+    incomingRequestSingle: '1 сұраныс күтіп тұр',
+    incomingRequestMany: (count) => `${count} сұраныс күтіп тұр`,
+    incomingRequestText:
+      'Біреу сізбен қосылғысы келеді. Сұранысты қарап, чатты бастау үшін қабылдаңыз.',
+    reviewButton: 'Қарау',
+    waitingTitle: 'Отбасын күту',
+    waitingText: 'Сұранысыңыз жіберілді. Олар қабылдағаннан кейін профилі осында шығады.',
+    checkStatusButton: 'Күйін тексеру',
+    addFamilyTitle: 'Алғашқы отбасы мүшесін қосыңыз',
+    addFamilyText:
+      'Email арқылы іздеп, сұраныс жіберіңіз. Бұл карта сіздің отбасы орталығыңызға айналады.',
+    openFamilyChatTitle: 'Отбасы чатын ашу',
+    openFamilyChatText:
+      'Жоғарыда қосылған адамдарға хабарлама, дауыс жазбасы, видео және сұрақ жіберіңіз.',
+    findFamilyTitle: 'Отбасы сұраныстары',
+    findFamilyIntro:
+      'Адамды email немесе username арқылы тауып, сұраныс жіберіңіз. Қабылдағаннан кейін қосыласыз.',
+    yourRoleTitle: 'Сіздің рөліңіз',
+    editProfileLink: 'Профильді өзгерту',
+    grandmaSearchPlaceholder: 'Әженің email-і немесе username-і',
+    familySearchPlaceholder: 'Отбасының email-і немесе username-і',
+    findButton: 'Табу',
+    peopleFoundTitle: 'Табылған адамдар',
+    searchHint: 'Тіркелген кезде қолданған email немесе username арқылы іздеңіз.',
+    requestsToAcceptTitle: 'Қабылдайтын сұраныстар',
+    loadingRequests: 'Сұраныстар жүктелуде...',
+    requestsToAcceptEmpty: 'Біреу қосылуды сұраса, оны осы жерден қабылдап немесе бас тарта аласыз.',
+    sentRequestsTitle: 'Жіберілген сұраныстар',
+    loadingSentRequests: 'Жіберілген сұраныстар жүктелуде...',
+    sentRequestsEmpty: 'Жіберген сұраныстарыңыз басқа адам жауап бергенше осында тұрады.',
+    acceptButton: 'Қабылдау',
+    declineButton: 'Бас тарту',
+    waitingChip: 'Күтілуде',
+    cancelButton: 'Болдырмау',
+    yourFamilyTitle: 'Сіздің отбасыңыз',
+    acceptedRequestsEmpty: 'Қабылданған сұраныстар осында шығады.',
+    familyChatButton: 'Чат',
+    askQuestionsButton: 'Сұрақ қою',
+    sendingRequest: 'Жіберілуде...',
+    sendRequestButton: 'Сұраныс жіберу',
+    connectedLabel: 'Қосылды',
+    waitingForYouLabel: 'Сізді күтіп тұр',
+    declinedLabel: 'Қабылданбады',
+    requestSentLabel: 'Сұраныс жіберілді',
+    noAccountFound: 'Аккаунт табылмады. Email немесе username-ді тексеріп, қайта көріңіз.',
+    couldNotLoadRequests: 'Отбасы сұраныстарын жүктеу мүмкін болмады.',
+    couldNotSearchFamily: 'Отбасын іздеу мүмкін болмады.',
+    familyRequestAccepted: 'Отбасы сұранысы қабылданды.',
+    familyRequestSent: 'Отбасы сұранысы жіберілді.',
+    requestSentDetails: 'Сұраныс жіберілді. Олар қабылдағанша ол жіберілген сұраныстарда тұрады.',
+    couldNotSendRequest: 'Сұранысты жіберу мүмкін болмады.',
+    familyRequestDeclined: 'Отбасы сұранысы қабылданбады.',
+    couldNotUpdateRequest: 'Сұранысты жаңарту мүмкін болмады.',
+    requestCanceled: 'Сұраныс болдырылмады.',
+    couldNotCancelRequest: 'Сұранысты болдырмау мүмкін болмады.',
+    backButton: 'Артқа',
+    privateChatLabel: 'жеке чат',
+    onlineLabel: 'онлайн',
+    awayLabel: 'жоқ',
+    familyChatTitle: 'Отбасы чаты',
+    chatPhotoLabel: 'Чат суреті',
+    changeChatPhotoLabel: 'Чат суретін өзгерту',
+    chatPhotoUpdated: 'Чат суреті сіз үшін жаңартылды.',
+    askGrandmaPlaceholder: 'Әжеге бір нәрсе сұраңыз...',
+    answerPlaceholder: 'Жауап жазыңыз немесе дауысыңызды жазыңыз...',
+    sendButton: 'Жіберу',
+    sendingLabel: 'Жіберілуде...',
+    micButton: 'Микрофон',
+    cameraButton: 'Камера',
+    recordVoiceTitle: 'Дауыс жазу',
+    recordVideoTitle: 'Видео жазу',
+    sendRecording: (type) => `Жіберу: ${type === 'audio' ? 'аудио' : 'видео'}`,
+    voiceRecordingStarted: 'Дауыс жазу басталды.',
+    videoRecordingStarted: 'Видео жазу басталды.',
+    voiceAnswerSent: 'Дауыс жауабы жіберілді.',
+    videoAnswerSent: 'Видео жауабы жіберілді.',
+    recordingBlocked: 'Жазуға рұқсат бұғатталды.',
+    questionIdeasTitle: 'Сұрақ идеялары',
+    skipButton: 'Өткізу',
+    openQuestionSuggestions: 'Сұрақ идеяларын ашу',
+    replyKidLabel: 'Бала',
+    replyGrandmaLabel: 'Әже',
+    replyingTo: (name) => `${name} хабарына жауап`,
+    mediaMessageLabel: 'Медиа хабарлама',
+    followUpTitle: 'Осы чаттан қосымша сұрақ',
+    readingLatestStory: 'Соңғы оқиға оқылып жатыр...',
+    useButton: 'Қолдану',
+    refreshButton: 'Жаңарту',
+    checkingLogin: 'Кіру тексерілуде...',
+    loadingFamilyChat: 'Отбасы чаты жүктелуде...',
+    noFamilyConnected: 'Әлі отбасы қосылмаған.',
+    noFamilyConnectedHelp:
+      'Отбасы сұранысын жіберіңіз немесе қабылдаңыз, содан кейін бұл нақты чат болады.',
+    logInBeforeChat: 'Чат алдында кіріңіз.',
+    chatLoginHelp: 'Алдымен Google немесе email арқылы кіріңіз, содан кейін отбасыңызды қосыңыз.',
+    writingLabel: 'Жазылуда...',
+    exportBookButton: 'Кітапты шығару',
+    writingBook: 'Кітап жасалып жатыр...',
+    bookDownloaded: 'Кітап жүктелді.',
+    questionFromHome: 'Басты беттен сұрақ',
+    dateLocale: 'kk',
+    todayLabel: 'Бүгін',
+    yesterdayLabel: 'Кеше',
   },
 };

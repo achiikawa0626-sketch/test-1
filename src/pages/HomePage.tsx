@@ -53,7 +53,7 @@ export function HomePage() {
               {text.chatButton}
             </Link>
             <Link className="home-hero__button home-hero__button--light" href="/media-book">
-              Make a book from text
+              {text.textBookButton}
             </Link>
           </div>
         </section>

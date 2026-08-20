@@ -3,7 +3,7 @@ import type { HomeLanguage } from './homeTranslations';
 
 const STORAGE_KEY = 'askgrandma-language';
 const DEFAULT_LANGUAGE: HomeLanguage = 'en';
-const LANGUAGES: HomeLanguage[] = ['en', 'es', 'ru', 'fr'];
+const LANGUAGES: HomeLanguage[] = ['en', 'es', 'ru', 'fr', 'kk'];
 
 function isHomeLanguage(value: string | null): value is HomeLanguage {
   return LANGUAGES.includes(value as HomeLanguage);
