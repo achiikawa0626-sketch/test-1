@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { readAccountMode } from '../lib/accountMode';
+import { useAppLanguage } from '../lib/appLanguage';
 import { homeTranslations } from '../lib/homeTranslations';
 import type { HomeTranslation } from '../lib/homeTranslations';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
@@ -14,6 +15,8 @@ type AuthStatusProps = {
 };
 
 export function AuthStatus({ compact = false, labels = homeTranslations.en }: AuthStatusProps) {
+  const [language] = useAppLanguage();
+  const text = labels === homeTranslations.en ? homeTranslations[language] : labels;
   const [email, setEmail] = useState<string>();
 
   useEffect(() => {
@@ -35,8 +38,8 @@ export function AuthStatus({ compact = false, labels = homeTranslations.en }: Au
   if (!email) {
     return (
       <div className={compact ? 'auth-status compact' : 'auth-status'}>
-        <span>{labels.authNotLoggedIn}</span>
-        <Link href="/login">{labels.signedOutButton}</Link>
+        <span>{text.authNotLoggedIn}</span>
+        <Link href="/login">{text.signedOutButton}</Link>
       </div>
     );
   }
@@ -44,9 +47,9 @@ export function AuthStatus({ compact = false, labels = homeTranslations.en }: Au
   return (
     <div className={compact ? 'auth-status compact' : 'auth-status'}>
       <span>
-        {readAccountMode() === 'kid' ? labels.authKidParent : labels.authGrandparent}: {email}
+        {readAccountMode() === 'kid' ? text.authKidParent : text.authGrandparent}: {email}
       </span>
-      <Link href="/profile">{labels.profileLink}</Link>
+      <Link href="/profile">{text.profileLink}</Link>
     </div>
   );
 }

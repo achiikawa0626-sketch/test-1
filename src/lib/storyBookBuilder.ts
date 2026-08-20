@@ -1,8 +1,11 @@
 import type { ChatBook, ChatBookChapter } from './chatBook';
+import type { HomeLanguage } from './homeTranslations';
+import { storyBookLabels } from './storyBookLabels';
 
 type StoryBookInput = {
   title: string;
   authorLine: string;
+  language: HomeLanguage;
   sourceText: string;
   sourceName: string;
 };
@@ -12,13 +15,16 @@ const MIN_CHAPTER_LENGTH = 260;
 
 export function buildBookFromText(input: StoryBookInput): ChatBook {
   const sections = splitIntoSections(input.sourceText);
-  const chapters = sections.map((section, index) => buildChapter(section, index, input.sourceName));
+  const chapters = sections.map((section, index) =>
+    buildChapter(section, index, input.sourceName, input.language),
+  );
 
   return {
     title: input.title,
     authorLine: input.authorLine,
-    overview: buildOverview(input.sourceName, sections),
+    overview: buildOverview(input.sourceName, sections, input.language),
     chapters,
+    language: input.language,
   };
 }
 
@@ -47,15 +53,22 @@ function splitIntoSections(text: string) {
   return sections;
 }
 
-function buildChapter(text: string, index: number, sourceName: string): ChatBookChapter {
+function buildChapter(
+  text: string,
+  index: number,
+  sourceName: string,
+  language: HomeLanguage,
+): ChatBookChapter {
   const paragraphs = splitIntoParagraphs(text);
+  const chapterNumber = index + 1;
+  const textLabels = storyBookLabels[language];
 
   return {
-    title: chapterTitle(text, index),
+    title: chapterTitle(text, chapterNumber, language),
     prose: paragraphs,
     sourceNotes: [
-      `Chapter ${index + 1} uses only ${sourceName}'s original written details.`,
-      `Main detail: ${firstSentence(text)}`,
+      textLabels.sourceNote(chapterNumber, sourceName),
+      `${textLabels.mainDetail}: ${firstSentence(text)}`,
     ],
     mediaReferences: [],
   };
@@ -79,17 +92,18 @@ function splitIntoSentences(text: string) {
     .filter(Boolean);
 }
 
-function chapterTitle(text: string, index: number) {
+function chapterTitle(text: string, chapterNumber: number, language: HomeLanguage) {
   const sentence = firstSentence(text);
   const words = sentence.split(/\s+/).slice(0, 8).join(' ');
-  return words ? `Chapter ${index + 1}: ${titleCase(stripEndPunctuation(words))}` : `Chapter ${index + 1}`;
+  const prefix = `${storyBookLabels[language].chapter} ${chapterNumber}`;
+  return words ? `${prefix}: ${titleCase(stripEndPunctuation(words))}` : prefix;
 }
 
-function buildOverview(sourceName: string, sections: string[]) {
+function buildOverview(sourceName: string, sections: string[], language: HomeLanguage) {
   const detail = firstSentence(sections[0] ?? '');
   return detail
-    ? `${sourceName}'s story begins with this real detail: ${detail}`
-    : `${sourceName}'s words are collected here as a short family book.`;
+    ? storyBookLabels[language].overview(sourceName, detail)
+    : storyBookLabels[language].emptyOverview(sourceName);
 }
 
 function firstSentence(text: string) {

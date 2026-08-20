@@ -1,4 +1,6 @@
 import type { AccountMode } from '../lib/accountMode';
+import { useAppLanguage } from '../lib/appLanguage';
+import { uiText } from '../lib/uiTranslations';
 
 type AccountSwitchProps = {
   mode: AccountMode;
@@ -6,14 +8,17 @@ type AccountSwitchProps = {
 };
 
 export function AccountSwitch({ mode, onChange }: AccountSwitchProps) {
+  const [language] = useAppLanguage();
+  const text = uiText(language);
+
   return (
-    <div className="account-switch" aria-label="Choose account type">
+    <div className="account-switch" aria-label={text.accountAria}>
       <button
         className={mode === 'kid' ? 'account-switch__button active' : 'account-switch__button'}
         type="button"
         onClick={() => onChange('kid')}
       >
-        Child or parent
+        {text.kidParent}
       </button>
       <button
         className={
@@ -22,7 +27,7 @@ export function AccountSwitch({ mode, onChange }: AccountSwitchProps) {
         type="button"
         onClick={() => onChange('grandparent')}
       >
-        Grandma or granddad
+        {text.profileGrandparent}
       </button>
     </div>
   );

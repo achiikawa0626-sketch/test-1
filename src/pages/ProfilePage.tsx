@@ -7,8 +7,12 @@ import {
   validateUsername,
 } from '../lib/profile';
 import { redirectTo } from '../lib/routes';
+import { useAppLanguage } from '../lib/appLanguage';
+import { uiText } from '../lib/uiTranslations';
 
 export function ProfilePage() {
+  const [language] = useAppLanguage();
+  const text = uiText(language);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
@@ -29,7 +33,7 @@ export function ProfilePage() {
         setAvatarUrl(profile.avatarUrl);
       })
       .catch((error: unknown) => {
-        setMessage(error instanceof Error ? error.message : 'Could not load profile.');
+        setMessage(error instanceof Error ? error.message : text.profileLoadError);
       });
   }, []);
 
@@ -40,10 +44,10 @@ export function ProfilePage() {
 
     try {
       await saveUserProfile({ nickname, username });
-      setMessage('Profile saved.');
+      setMessage(text.profileSaved);
       window.setTimeout(() => redirectTo('/find-family'), 400);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not save profile.');
+      setMessage(error instanceof Error ? error.message : text.profileSaveError);
     } finally {
       setBusy(false);
     }
@@ -58,9 +62,9 @@ export function ProfilePage() {
 
     try {
       setAvatarUrl(await uploadProfileAvatar(file));
-      setMessage('Avatar uploaded.');
+      setMessage(text.profileAvatarSaved);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not upload avatar.');
+      setMessage(error instanceof Error ? error.message : text.profileAvatarError);
     } finally {
       setBusy(false);
       event.target.value = '';
@@ -73,22 +77,22 @@ export function ProfilePage() {
     <main className="container">
       <header className="page-header">
         <Link href="/">AskGrandma</Link>
-        <h1>Your profile</h1>
-        <p>Choose how your family will recognize you inside the app.</p>
+        <h1>{text.profileTitle}</h1>
+        <p>{text.profileText}</p>
       </header>
 
       <form className="card profile-editor" onSubmit={save}>
         <button
           className="profile-avatar-button"
           type="button"
-          aria-label="Choose profile photo"
+          aria-label={text.profileAvatarAria}
           onClick={() => fileInputRef.current?.click()}
         >
           {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{email[0]?.toUpperCase() ?? '?'}</span>}
         </button>
         <div className="profile-photo-actions">
           <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()}>
-            Choose photo
+            {text.profileChoosePhoto}
           </button>
           <button
             className="ghost"
@@ -96,7 +100,7 @@ export function ProfilePage() {
             disabled={busy}
             onClick={() => cameraInputRef.current?.click()}
           >
-            Take photo
+            {text.profileTakePhoto}
           </button>
         </div>
         <input
@@ -116,17 +120,17 @@ export function ProfilePage() {
         />
 
         <div className="profile-locked-field">
-          <span>Role</span>
-          <strong>{role === 'kid' ? 'Child or parent' : 'Grandma or granddad'}</strong>
+          <span>{text.profileRole}</span>
+          <strong>{role === 'kid' ? text.profileKid : text.profileGrandparent}</strong>
         </div>
 
         <label>
-          Nickname
+          {text.profileNickname}
           <input value={nickname} onChange={(event) => setNickname(event.target.value)} />
         </label>
 
         <label>
-          Username
+          {text.profileUsername}
           <input
             value={username}
             onChange={(event) => setUsername(event.target.value.toLowerCase())}
@@ -137,7 +141,7 @@ export function ProfilePage() {
         {usernameError && <p className="message">{usernameError}</p>}
 
         <button type="submit" disabled={busy || Boolean(usernameError)}>
-          {busy ? 'Saving...' : 'Save and find family'}
+          {busy ? text.profileSaving : text.profileSave}
         </button>
         {message && <p className="message">{message}</p>}
       </form>

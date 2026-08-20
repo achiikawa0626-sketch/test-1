@@ -1,5 +1,6 @@
 import type { DirectChatMessage } from './directChat';
 import type { FamilyProfile } from './familyConnections';
+import type { HomeLanguage } from './homeTranslations';
 import { buildBookFromText } from './storyBookBuilder';
 
 type ChatBookInput = {
@@ -20,6 +21,7 @@ export type ChatBook = {
   authorLine: string;
   overview: string;
   chapters: ChatBookChapter[];
+  language: HomeLanguage;
 };
 
 export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> {
@@ -36,6 +38,7 @@ export async function generateChatBook(input: ChatBookInput): Promise<ChatBook> 
 
   return buildBookFromText({
     ...base,
+    language: 'en',
     sourceName: 'Grandma',
     sourceText: source.lines.join('\n\n'),
   });

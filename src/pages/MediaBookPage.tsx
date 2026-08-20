@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { MediaBookPreview } from '../components/MediaBookPreview';
 import { TextBookForm } from '../components/TextBookForm';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useAppLanguage } from '../lib/appLanguage';
 import type { ChatBook } from '../lib/chatBook';
 import { downloadChatBookHtml } from '../lib/chatBookHtml';
@@ -9,7 +10,7 @@ import { generateTextBook } from '../lib/textBook';
 import { textBookTranslations } from '../lib/textBookTranslations';
 
 export function MediaBookPage() {
-  const [language] = useAppLanguage();
+  const [language, setLanguage] = useAppLanguage();
   const text = textBookTranslations[language];
   const [book, setBook] = useState<ChatBook>();
   const [grandmaName, setGrandmaName] = useState(text.grandmaNamePlaceholder);
@@ -19,13 +20,24 @@ export function MediaBookPage() {
   const [isWriting, setIsWriting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  function changeLanguage(nextLanguage: typeof language) {
+    const nextText = textBookTranslations[nextLanguage];
+    setTitle((currentTitle) =>
+      currentTitle === text.bookTitlePlaceholder ? nextText.bookTitlePlaceholder : currentTitle,
+    );
+    setGrandmaName((currentName) =>
+      currentName === text.grandmaNamePlaceholder ? nextText.grandmaNamePlaceholder : currentName,
+    );
+    setLanguage(nextLanguage);
+  }
+
   async function createBook() {
     if (sourceText.trim().length < 40 || isWriting) return;
     setIsWriting(true);
     setMessage('');
 
     try {
-      setBook(await generateTextBook({ grandmaName, sourceText, title }));
+      setBook(await generateTextBook({ grandmaName, language, sourceText, title }));
       setMessage(text.createdMessage);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : text.createError);
@@ -49,6 +61,7 @@ export function MediaBookPage() {
     <main className="wide-container media-book-page">
       <header className="page-header">
         <Link href="/">{text.backButton}</Link>
+        <LanguageSwitcher language={language} onChange={changeLanguage} />
         <h1>{text.pageTitle}</h1>
         <p>{text.pageIntro}</p>
       </header>

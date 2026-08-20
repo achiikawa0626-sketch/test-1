@@ -1,4 +1,13 @@
 import type { ChatBook } from './chatBook';
+import type { HomeLanguage } from './homeTranslations';
+
+const htmlLabels: Record<HomeLanguage, { sourceNotes: string; fallbackFileName: string }> = {
+  en: { sourceNotes: 'Source notes', fallbackFileName: 'chat-book' },
+  es: { sourceNotes: 'Notas de fuente', fallbackFileName: 'libro-chat' },
+  ru: { sourceNotes: 'Заметки об источнике', fallbackFileName: 'kniga-chata' },
+  fr: { sourceNotes: 'Notes de source', fallbackFileName: 'livre-chat' },
+  kk: { sourceNotes: 'Дерек ескертпелері', fallbackFileName: 'chat-kitap' },
+};
 
 export function downloadChatBookHtml(book: ChatBook) {
   const html = renderBookHtml(book);
@@ -17,7 +26,7 @@ export function downloadChatBookHtml(book: ChatBook) {
 function renderBookHtml(book: ChatBook) {
   return [
     '<!doctype html>',
-    '<html lang="en">',
+    `<html lang="${book.language}">`,
     '<head>',
     '<meta charset="utf-8" />',
     '<meta name="viewport" content="width=device-width, initial-scale=1" />',
@@ -45,20 +54,20 @@ function renderBookHtml(book: ChatBook) {
     `<h1>${escapeHtml(book.title)}</h1>`,
     `<p class="overview">${escapeHtml(book.overview)}</p>`,
     '</div>',
-    ...book.chapters.map(renderChapter),
+    ...book.chapters.map((chapter) => renderChapter(chapter, book.language)),
     '</main>',
     '</body>',
     '</html>',
   ].join('');
 }
 
-function renderChapter(chapter: ChatBook['chapters'][number]) {
+function renderChapter(chapter: ChatBook['chapters'][number], language: HomeLanguage) {
   return [
     '<section>',
     `<h2>${escapeHtml(chapter.title)}</h2>`,
     ...chapter.prose.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`),
     '<div class="notes">',
-    '<strong>Source notes</strong>',
+    `<strong>${htmlLabels[language].sourceNotes}</strong>`,
     '<ul>',
     ...chapter.sourceNotes.map((note) => `<li>${escapeHtml(note)}</li>`),
     '</ul>',
@@ -82,5 +91,5 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  return slug || 'chat-book';
+  return slug || htmlLabels.en.fallbackFileName;
 }

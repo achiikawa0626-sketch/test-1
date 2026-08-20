@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { AccountSwitch } from './AccountSwitch';
 import { readAccountMode, saveAccountMode } from '../lib/accountMode';
+import { useAppLanguage } from '../lib/appLanguage';
 import { appUrl, redirectTo } from '../lib/routes';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { uiText } from '../lib/uiTranslations';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
 export function Auth() {
+  const [language] = useAppLanguage();
+  const text = uiText(language);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -35,7 +39,7 @@ export function Auth() {
 
       if (error) setMessage(error.message);
     } catch {
-      setMessage('Could not open Google sign in. Try again.');
+      setMessage(text.authGoogleError);
     } finally {
       setBusy(false);
     }
@@ -59,10 +63,10 @@ export function Auth() {
 
       const { error } = await request;
       if (error) setMessage(error.message);
-      else if (mode === 'signup') setMessage('Done. Check your email if confirmation is needed.');
+      else if (mode === 'signup') setMessage(text.authSuccess);
       else redirectTo('/profile');
     } catch {
-      setMessage('Something went wrong. Try again.');
+      setMessage(text.authSomethingWrong);
     } finally {
       setBusy(false);
     }
@@ -70,41 +74,41 @@ export function Auth() {
 
   return (
     <section className="card auth-card">
-      <h2>{mode === 'signin' ? 'Log in' : 'Create account'}</h2>
+      <h2>{mode === 'signin' ? text.authLogin : text.authCreate}</h2>
       <p className="auth-help">
         {mode === 'signin'
-          ? 'Choose who you are, then use the account you already created.'
-          : 'Choose who you are. You can edit your name and avatar later.'}
+          ? text.authLoginHelp
+          : text.authCreateHelp}
       </p>
       <div className="auth-role-choice">
-        <p className="auth-role-label">I am a...</p>
+        <p className="auth-role-label">{text.authRoleLabel}</p>
         <AccountSwitch mode={accountMode} onChange={changeAccountMode} />
       </div>
 
       <button className="google-button" type="button" onClick={signInWithGoogle} disabled={busy}>
-        {mode === 'signup' ? 'Create with Google' : 'Continue with Google'}
+        {mode === 'signup' ? text.authCreateGoogle : text.authWithGoogle}
       </button>
 
-      <div className="auth-divider">or use email</div>
+      <div className="auth-divider">{text.authDivider}</div>
 
       <form onSubmit={handleSubmit} className="form">
         <input
           type="email"
-          placeholder="email"
+          placeholder={text.authEmail}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
         />
         <input
           type="password"
-          placeholder="password (6+ characters)"
+          placeholder={text.authPassword}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           minLength={6}
           required
         />
         <button type="submit" disabled={busy}>
-          {busy ? 'Loading...' : mode === 'signin' ? 'Log in' : 'Create account'}
+          {busy ? text.authLoading : mode === 'signin' ? text.authLogin : text.authCreate}
         </button>
       </form>
 
@@ -115,7 +119,7 @@ export function Auth() {
         type="button"
         onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
       >
-        {mode === 'signin' ? 'No account yet? Create one' : 'Already have an account? Log in'}
+        {mode === 'signin' ? text.authNoAccount : text.authAlreadyAccount}
       </button>
     </section>
   );
