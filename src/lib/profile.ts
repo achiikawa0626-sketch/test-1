@@ -4,9 +4,10 @@ import { ensureProfile } from './familyConnections';
 import { AVATAR_BUCKET, createAvatarUrl } from './profileAvatars';
 import { readSavedProfile, writeSavedProfile } from './profileLocal';
 import type { SavedProfile } from './profileLocal';
+import { validateUsername } from './profileValidation';
 import { supabase } from './supabase';
 
-const BAD_WORDS = ['admin', 'support', 'moderator', 'fuck', 'shit', 'bitch', 'dick', 'asshole'];
+export { validateUsername } from './profileValidation';
 
 export type UserProfile = {
   email: string;
@@ -29,19 +30,6 @@ const profileSelects = [
   'email, display_name, username, account_mode',
   'email, display_name, username, account_mode, avatar_path',
 ];
-
-export function validateUsername(username: string) {
-  const value = username.trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,20}$/.test(value)) {
-    return 'Username must be 3-20 letters, numbers, or underscores.';
-  }
-
-  if (BAD_WORDS.some((word) => value.includes(word))) {
-    return 'Choose a kind username without bad words.';
-  }
-
-  return '';
-}
 
 export async function loadUserProfile(): Promise<UserProfile> {
   const user = await readUser();

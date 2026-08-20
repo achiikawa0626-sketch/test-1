@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import {
   loadUserProfile,
   saveUserProfile,
@@ -11,7 +12,7 @@ import { useAppLanguage } from '../lib/appLanguage';
 import { uiText } from '../lib/uiTranslations';
 
 export function ProfilePage() {
-  const [language] = useAppLanguage();
+  const [language, setLanguage] = useAppLanguage();
   const text = uiText(language);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -71,12 +72,13 @@ export function ProfilePage() {
     }
   }
 
-  const usernameError = username ? validateUsername(username) : '';
+  const usernameError = username ? validateUsername(username, language) : '';
 
   return (
     <main className="container">
       <header className="page-header">
         <Link href="/">AskGrandma</Link>
+        <LanguageSwitcher language={language} onChange={setLanguage} />
         <h1>{text.profileTitle}</h1>
         <p>{text.profileText}</p>
       </header>
