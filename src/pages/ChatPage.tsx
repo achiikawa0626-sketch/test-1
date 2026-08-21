@@ -464,11 +464,12 @@ export function ChatPage() {
 
     try {
       const bookMessages = await loadDirectChat(activeContact.id);
-      setMessages(bookMessages);
-      saveCachedMessages(activeContact.id, bookMessages);
+      const bookMessagesWithMedia = await loadDirectChatMediaUrls(bookMessages);
+      setMessages(bookMessagesWithMedia);
+      saveCachedMessages(activeContact.id, bookMessagesWithMedia);
       const book = await generateChatBook({
         contact: activeContact,
-        messages: bookMessages,
+        messages: bookMessagesWithMedia,
         myName,
       });
       downloadChatBookHtml(book);
