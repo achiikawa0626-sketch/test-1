@@ -6,16 +6,16 @@
     <script>
       (function () {
         var location = window.location;
-        var parts = location.pathname.split('/').filter(Boolean);
-        var repo = parts.length > 0 ? '/' + parts[0] : '';
+        var repo = '/test-1';
 
-        if (!repo) {
-          location.replace(location.origin + '/');
+        if (location.pathname === repo || location.pathname === repo + '/') {
+          location.replace(location.origin + repo + '/#/');
           return;
         }
 
-        if (location.pathname.indexOf(repo + '/') !== 0 && location.pathname !== repo) {
-          location.replace(location.origin + repo + '/');
+        if (location.pathname.indexOf(repo + '/') !== 0) {
+          var rootRoute = location.pathname.replace(/^\//, '');
+          location.replace(location.origin + repo + '/#/' + rootRoute + location.search);
           return;
         }
 
