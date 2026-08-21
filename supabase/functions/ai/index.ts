@@ -1,5 +1,5 @@
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const MODEL = 'gemini-3.5-flash';
+const MODEL = 'gemini-3.7-flash';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -96,7 +96,10 @@ function fallbackText(prompt: string, system: string) {
   const lowerPrompt = prompt.toLowerCase();
   const lowerSystem = system.toLowerCase();
 
-  if (lowerPrompt.includes('transcribe this')) return '';
+  if (lowerPrompt.includes('transcribe') && lowerPrompt.includes('video')) {
+    return '';
+  }
+  if (lowerPrompt.includes('transcribe')) return '';
   if (lowerSystem.includes('storybook')) return fallbackBook(prompt);
   if (lowerSystem.includes('follow-up questions')) return fallbackQuestions(prompt);
 

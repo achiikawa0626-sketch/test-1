@@ -21,16 +21,17 @@ export async function readChatMediaSource(input: {
   speaker: string;
   sentAt: string;
   cacheKey?: string;
+  translateToEnglish?: boolean;
 }): Promise<ChatMediaSource> {
   const mediaLabel = input.mediaType === 'audio' ? 'audio' : 'video';
   const reference = `${mediaLabel} from ${input.speaker} on ${input.sentAt}`;
-  const cacheKey = input.cacheKey ?? input.url;
+  const cacheKey = `${input.cacheKey ?? input.url}:${input.translateToEnglish ? 'en' : 'raw'}`;
   const cachedTranscript = readCachedTranscript(cacheKey);
   if (cachedTranscript !== null) return { reference, transcript: cachedTranscript };
 
   const mediaPart = await loadMediaPart(input.url, input.mediaType);
   const transcript = mediaPart
-    ? await transcribeCachedMedia(cacheKey, mediaPart, mediaLabel)
+    ? await transcribeCachedMedia(cacheKey, mediaPart, mediaLabel, input.translateToEnglish)
     : undefined;
 
   return { mediaPart, reference, transcript };
@@ -40,27 +41,36 @@ async function transcribeCachedMedia(
   cacheKey: string,
   mediaPart: AiMediaPart,
   mediaLabel: string,
+  translateToEnglish = false,
 ) {
   const pendingTranscript = pendingTranscripts.get(cacheKey);
   if (pendingTranscript) return pendingTranscript;
 
-  const transcriptPromise = transcribeMedia(mediaPart, mediaLabel).then((transcript) => {
-    transcriptCache.set(cacheKey, transcript);
-    saveCachedTranscript(cacheKey, transcript);
-    pendingTranscripts.delete(cacheKey);
-    return transcript;
-  });
+  const transcriptPromise = transcribeMedia(mediaPart, mediaLabel, translateToEnglish)
+    .then((transcript) => {
+      transcriptCache.set(cacheKey, transcript);
+      saveCachedTranscript(cacheKey, transcript);
+      return transcript;
+    })
+    .finally(() => pendingTranscripts.delete(cacheKey));
 
   pendingTranscripts.set(cacheKey, transcriptPromise);
   return transcriptPromise;
 }
 
-async function transcribeMedia(mediaPart: AiMediaPart, mediaLabel: string) {
+async function transcribeMedia(
+  mediaPart: AiMediaPart,
+  mediaLabel: string,
+  translateToEnglish: boolean,
+) {
+  const instruction = translateToEnglish
+    ? 'Transcribe what people say, then translate it into clear natural English for a family storybook.'
+    : 'Transcribe only what people say in the original language.';
   const { data, error } = await supabase.functions.invoke('ai', {
     body: {
       system:
-        'You are a careful audio transcription assistant. Transcribe only what people say. Do not summarize, add story language, or invent missing words.',
-      prompt: `Transcribe this ${mediaLabel}. Return plain text only. If you cannot understand it, return an empty string.`,
+        'You are a careful media transcription assistant. Do not summarize, add story language, or invent missing words.',
+      prompt: `${instruction} Use the ${mediaLabel} track, including speech in the video if present. Return plain text only. If you cannot understand it, return an empty string.`,
       media: [mediaPart],
     },
   });

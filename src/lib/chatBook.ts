@@ -73,6 +73,7 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
         speaker,
         sentAt,
         cacheKey: message.id,
+        translateToEnglish: true,
       });
       const transcript = body || media.transcript;
       mediaReferences.push(media.reference);
@@ -133,8 +134,10 @@ function selectBookMessages(messages: DirectChatMessage[]) {
   const usableMessages = messages.filter(
     (message) => isUsableBookText(message.body) || Boolean(message.mediaUrl),
   );
-  const answerMessages = usableMessages.filter((message) => !message.isMine);
-  return answerMessages.length > 0 ? answerMessages : usableMessages;
+  const grandparentMessages = usableMessages.filter(
+    (message) => message.senderRole === 'grandparent',
+  );
+  return grandparentMessages.length > 0 ? grandparentMessages : usableMessages;
 }
 
 function isUsableBookText(text: string) {
