@@ -73,7 +73,6 @@ async function buildSource(input: ChatBookInput, messages: DirectChatMessage[]):
         speaker,
         sentAt,
         cacheKey: message.id,
-        translateToEnglish: true,
       });
       const transcript = body || media.transcript;
       mediaReferences.push(media.reference);
@@ -108,7 +107,7 @@ async function buildAiBook(
         `Book title: ${base.title}`,
         'Write 2-4 short chapters.',
         'Make each chapter read like a real family memory, not a transcript.',
-        'If the source is in Russian, Kazakh, or mixed language, keep the meaning and write clear natural prose.',
+        'Keep the original language of the source whenever possible.',
         '',
         'Source material:',
         sourceText,
